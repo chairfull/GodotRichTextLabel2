@@ -42,7 +42,7 @@ signal pressed(variant: Variant)
 signal right_pressed(variant: Variant)
 
 func _get_property_list():
-	var fonts := ",".join(FontHelper.get_font_paths({}).keys())
+	var fonts := "," + ",".join(FontHelper.get_font_paths({}).keys())
 	return [
 		{
 			"name": "Font",
@@ -54,7 +54,7 @@ func _get_property_list():
 			"name": "font",
 			"type": TYPE_STRING,
 			"usage": PROPERTY_USAGE_DEFAULT,
-			"hint": PROPERTY_HINT_ENUM,
+			"hint": PROPERTY_HINT_ENUM_SUGGESTION,
 			"hint_string": fonts
 	}]
 
@@ -219,27 +219,29 @@ func _update_theme_shadow():
 ## Tag to wrap numbers in.
 @export var autostyle_numbers_tag := "[lime_green]%s[]"
 
+## WARNING: Expieremental.
 @export var width_from_content := false:
 	set(w):
 		width_from_content = w
 		_redraw()
 
+@export_group("Overrides", "override_")
 ## Override so bbcode_enabled = true at init.
-@export var bbcodeEnabled := true:
+@export var override_bbcodeEnabled := true:
 	set(b):
-		bbcodeEnabled = b
+		override_bbcodeEnabled = b
 		bbcode_enabled = b
 
 ## Override s fit_content = true at init.
-@export var fitContent := true:
+@export var override_fitContent := true:
 	set(f):
-		fitContent = f
+		override_fitContent = f
 		fit_content = f
 
 ## Some animations can go out of bounds. So override to disable clipping.
-@export var clipContents := false:
+@export var override_clipContents := false:
 	set(c):
-		clipContents = c
+		override_clipContents = c
 		clip_contents = c
 
 var _stack := []
@@ -409,11 +411,11 @@ func _preparse_untagged(btext: String) -> String:
 	
 	# markdown
 	if markdown_enabled:
-		btext = _replace2(btext, "***", markdown_format_bold_italics)
+		#btext = _replace2(btext, "***", markdown_format_bold_italics)
 		btext = _replace2(btext, "___", markdown_format_bold_italics)
-		btext = _replace2(btext, "**", markdown_format_bold)
+		#btext = _replace2(btext, "**", markdown_format_bold)
 		btext = _replace2(btext, "__", markdown_format_bold)
-		btext = _replace2(btext, "*", markdown_format_italics)
+		#btext = _replace2(btext, "*", markdown_format_italics)
 		btext = _replace2(btext, "_", markdown_format_italics)
 		btext = _replace2(btext, "~", markdown_format_highlight)
 	
