@@ -14,7 +14,7 @@ const PATTERN_M := ["-m", "_m", "-mono", "_mono"]
 const PATTERN_ALL := PATTERN_R + PATTERN_B + PATTERN_I + PATTERN_BI + PATTERN_M
 const FONT_FORMATS := ["otf", "ttf", "ttc", "otc", "woff", "woff2", "pfb", "pfm", "fnt", "font"]
 
-const FONT_DIR := "res://fonts"
+const FONT_DIR := "res://"
 
 ## Search the fonts folder for all fonts.
 static func get_font_paths(out: Dictionary, path := FONT_DIR) -> Dictionary:

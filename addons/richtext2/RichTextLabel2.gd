@@ -196,7 +196,10 @@ func _update_theme_shadow():
 @export var markdown_format_italics := "[i]%s[]" ## _italic_
 @export var markdown_format_bold := "[b]%s[]" ## __bold__
 @export var markdown_format_bold_italics := "[bi]%s[]" ## ___bold italic___
-@export var markdown_format_highlight := "[bgcolor=green]%s[]" ## ~highlight~
+@export var markdown_format_highlight := "[green;sin]%s[]" ## ~highlight~
+@export var markdown_format_italics2 := "[i]*%s*[]" ## *italic*
+@export var markdown_format_bold2 := "[b]*%s*[]" ## **bold**
+@export var markdown_format_bold_italics2 := "%s" ## ***bold italic***
 
 @export_group("Effect", "effect_")
 @export_range(0.0, 1.0) var effect_weight := 0.0
@@ -208,10 +211,12 @@ func _update_theme_shadow():
 @export var context_enabled := true
 ## For use with $property to display node properties. 
 @export var context_path: NodePath = "/root/State"# used when request properties or calling pipe functions.
-## Will call `to_string_nice()` if an object has that.
+## Will attempt to call `to_string_nice()` on objects. Otherwise `.to_string()` is used.
 @export var context_nice_objects := true
 ## Will automatically add commas to integers: 1234 -> 1,234
 @export var context_nice_ints := true
+## Will niceify arrays.
+@export var context_nice_array := true
 
 @export_group("Auto Style", "autostyle_")
 ## Add tag to all numbers?
@@ -405,19 +410,19 @@ func _preparse_untagged(btext: String) -> String:
 	if btext == "":
 		return btext
 	
-	# nice quotes
+	# Open + closed quotes.
 	if nicer_quotes_enabled:
-		btext = _replace2(btext, '"', nicer_quotes_format)
+		btext = _format_between(btext, '"', nicer_quotes_format)
 	
-	# markdown
+	# Markdown.
 	if markdown_enabled:
-		#btext = _replace2(btext, "***", markdown_format_bold_italics)
-		btext = _replace2(btext, "___", markdown_format_bold_italics)
-		#btext = _replace2(btext, "**", markdown_format_bold)
-		btext = _replace2(btext, "__", markdown_format_bold)
-		#btext = _replace2(btext, "*", markdown_format_italics)
-		btext = _replace2(btext, "_", markdown_format_italics)
-		btext = _replace2(btext, "~", markdown_format_highlight)
+		btext = _format_between(btext, "***", markdown_format_bold_italics2)
+		btext = _format_between(btext, "___", markdown_format_bold_italics)
+		btext = _format_between(btext, "**", markdown_format_bold2)
+		btext = _format_between(btext, "__", markdown_format_bold)
+		btext = _format_between(btext, "*", markdown_format_italics2)
+		btext = _format_between(btext, "_", markdown_format_italics)
+		btext = _format_between(btext, "~", markdown_format_highlight)
 	
 	btext = replace_emojis(btext)
 	if autostyle_numbers:
@@ -425,48 +430,84 @@ func _preparse_untagged(btext: String) -> String:
 	
 	return btext
 
+func _format_between(st: String, tag: String, frmt: String) -> String:
+	return _replace_between(st, tag, func(a, b): return frmt % b)
+
+# new version that works regardless of bbcode in the middle.
+func _replace_between(st: String, tag: String, call: Callable) -> String:
+	return _replace_between_both(st, tag, tag, call)
+
+func _replace_between_both(st: String, head: String, tail: String, call: Callable) -> String:
+	return _replace(st, escape_regex(head) + r"(.*?)" + escape_regex(tail), call)
+
+func escape_regex(input: String) -> String:
+	input = input.replace("\\", "\\\\")
+	input = input.replace(".", "\\.")
+	input = input.replace("^", "\\^")
+	input = input.replace("$", "\\$")
+	input = input.replace("*", "\\*")
+	input = input.replace("+", "\\+")
+	input = input.replace("?", "\\?")
+	input = input.replace("(", "\\(")
+	input = input.replace(")", "\\)")
+	input = input.replace("[", "\\[")
+	input = input.replace("]", "\\]")
+	input = input.replace("{", "\\{")
+	input = input.replace("}", "\\}")
+	input = input.replace("|", "\\|")
+	return input
+
+func _replace(string: String, pattern: String, call: Callable) -> String:
+	var regex := RegEx.create_from_string(pattern)
+	var offset := 0
+	var output := ""
+	while true:
+		var m := regex.search(string, offset)
+		if not m:
+			break
+		output += string.substr(offset, m.get_start(0)-offset)
+		output += str(call.call(m.get_string(0), m.get_string(1)))
+		offset = m.get_end(0)
+	output += string.substr(offset)
+	return output
+
 func replace_emojis(string: String) -> String:
-	var regex := RegEx.create_from_string(r":([a-zA-Z0-9\+\-]+):")
-	for rm in regex.search_all(string):
-		var full := rm.get_string(0)
-		var emoji := rm.get_string(1)
+	return _replace(string, r":([a-zA-Z0-9\+\-]+):", func(full: String, emoji: String):
 		if emoji in Emoji.NAMES:
-			string = string.replace(full, Emoji.NAMES[emoji])
-	return string
+			return Emoji.NAMES[emoji]
+		return full
+	)
 
 func replace_context(string: String) -> String:
-	var regex := RegEx.create_from_string(r"(?<!\\)\$[a-zA-Z0-9_]+(?:[.:][a-zA-Z0-9_]+)*(?:\[[^\]]*\]|\([^\)]*\))*")
-	# Get replacements.
-	var keys := {}
-	for rm in regex.search_all(string):
-		var path := rm.get_string(0)
-		if not path in keys:
-			var value = get_expression(path.substr(1))
-			if _expression_error != OK:
-				keys[path] = "[red]%s[]" % path
-			else:
-				if typeof(value) == TYPE_INT and context_nice_ints:
-					value = commas(value)
-				elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_string_nice"):
-					value = value.to_string_nice()
-				keys[path] = str(value)
-	# Sort from longest to shortest.
-	var list := []
-	for key in keys:
-		list.append([key, keys[key]])
-	list.sort_custom(func(a, b): len(a[0]) > len(b[0]))
-	# Replace.
-	for item in list:
-		string = string.replace(item[0], item[1])
-	return string
+	return _replace(string, r"(?<!\\)\$[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*(?:[.:][a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)*(?:\[[^\]]*\]|\([^\)]*\))*", func(path: String, _e: String):
+		var value = get_expression(path.substr(1))
+		if _expression_error != OK:
+			return "[red]%s[]" % path
+		else:
+			if typeof(value) == TYPE_INT and context_nice_ints:
+				return commas(value)
+			elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_string_nice"):
+				return value.to_string_nice()
+			elif typeof(value) == TYPE_ARRAY and context_nice_array:
+				var nice_array := []
+				for item in value:
+					match typeof(item):
+						TYPE_OBJECT:
+							if item.has_method(&"to_string_nice"):
+								nice_array.append(item.to_string_nice())
+							elif "name" in item:
+								nice_array.append(item.name)
+							else:
+								nice_array.append(str(item))
+						_: nice_array.append(str(item))
+				value = ", ".join(nice_array)
+			return value
+		)
 
 func replace_numbers(string: String) -> String:
-	var regex := RegEx.create_from_string(r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b")
-	for m in regex.search_all(string):
-		var head := string.substr(0, m.get_start(0))
-		var tail := string.substr(m.get_end(0))
-		string = "%s%s%s" % [head, autostyle_numbers_tag % m.get_string(), tail]
-	return string
+	return _replace(string, r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b", func(num: String, _e: String):
+		return autostyle_numbers_tag % num
+		)
 
 func _parse(btext: String):
 	while TAG_OPENED in btext:
@@ -932,16 +973,6 @@ func _replace_outside(s: String, head: String, tail: String, fr: Callable) -> St
 	
 	parts.append(str(fr.call(s)))
 	return "".join(parts)
-
-# new version that works regardless of bbcode in the middle.
-func _replace2(btext: String, tag: String, format: String):
-	var f := format.split("%s", true, 1)
-	while tag in btext:
-		var p := btext.split(tag, true, 1)
-		var o: bool = _state.opened.get(tag, false)
-		_state.opened[tag] = not o
-		btext = p[0] + (f[1] if o else f[0]) + p[1]
-	return btext
 
 # similar to python style substr: s[1:-1]
 func _part(s :String, begin: int=0, end=null) -> String:

@@ -3,12 +3,12 @@
 importer="font_data_dynamic"
 type="FontFile"
 uid="uid://f3pjv8rdkgv"
-path="res://.godot/imported/NotoColorEmoji-Regular.ttf-c03cb5c8fc7283da0697d40881c67501.fontdata"
+path="res://.godot/imported/NotoColorEmoji-Regular.ttf-06bffd04cbbf2b8b019add794b769d94.fontdata"
 
 [deps]
 
-source_file="res://fonts/NotoColorEmoji-Regular.ttf"
-dest_files=["res://.godot/imported/NotoColorEmoji-Regular.ttf-c03cb5c8fc7283da0697d40881c67501.fontdata"]
+source_file="res://demo/fonts/NotoColorEmoji-Regular.ttf"
+dest_files=["res://.godot/imported/NotoColorEmoji-Regular.ttf-06bffd04cbbf2b8b019add794b769d94.fontdata"]
 
 [params]
 

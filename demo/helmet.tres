@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TestItem" load_steps=2 format=3 uid="uid://lc8dqyq72jyp"]
+
+[ext_resource type="Script" path="res://demo/TestItem.gd" id="1_r0ltb"]
+
+[resource]
+script = ExtResource("1_r0ltb")
+name = "Nice Helmet"
+color = Color(0, 0.713487, 0.730401, 1)

@@ -11,12 +11,9 @@ config_version=5
 [application]
 
 config/name="asset_RichText"
+run/main_scene="res://demo/demo.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
-
-[autoload]
-
-State="*res://StateTest.gd"
 
 [rendering]
 

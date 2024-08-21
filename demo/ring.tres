@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TestItem" load_steps=2 format=3 uid="uid://bu8o6rypftpjy"]
+
+[ext_resource type="Script" path="res://demo/TestItem.gd" id="1_mfm5x"]
+
+[resource]
+script = ExtResource("1_mfm5x")
+name = "Quest Ring"
+color = Color(0.97822, 0.415972, 0.567418, 1)
