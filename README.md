@@ -28,7 +28,7 @@
 	- `pause` `wait` `speed` (TODO)
 - Many more I can't rememember... there are a lot of features.
 
-> [!INFO] Pro Tip
+> [!TIP]
 > Emojis can really lag on loadup on some computers.
 > Get around it by creating a FontVariation with the emoji font as the base and a system font as the fallback.
 > See `res://demo/fonts/emoji_font.tres` for example.
