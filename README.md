@@ -53,7 +53,7 @@ Fonts will be discovered wherever they are.
 
 This node is meant for dialogue systems and cinematics.
 
-[![Watch the video](https://raw.githubusercontent.com/chairfull/GodotRichTextLabel2/main/README/trans_preview.jpg)](https://raw.githubusercontent.com/chairfull/GodotRichTextLabel2/main/docs/trans.mp4)
+[![Watch the video](https://raw.githubusercontent.com/chairfull/GodotRichTextLabel2/main/README/trans_preview.jpg)](https://raw.githubusercontent.com/chairfull/GodotRichTextLabel2/main/README/trans.mp4)
 
 ## Animation Tags
 
