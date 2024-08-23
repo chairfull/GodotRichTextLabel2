@@ -46,6 +46,9 @@ func send_back_transform(c: CharFXTransform):
 	var label := get_label_animated()
 	var index := c.relative_index
 	if index > 0 and index < len(label._transforms):
-		var text_server := TextServerManager.get_primary_interface()
-		label._char_size[index] = text_server.font_get_glyph_size(c.font, Vector2i(get_label2().font_size, 0), c.glyph_index)
+		var ts := TextServerManager.get_primary_interface()
+		var font_size := get_label2().font_size
+		var off_x := ts.font_get_glyph_size(c.font, Vector2i(font_size, 0), c.glyph_index).x
+		var off_y := ts.font_get_ascent(c.font, font_size) - ts.font_get_descent(c.font, font_size)
+		label._char_size[index] = Vector2(off_x, off_y)
 		label._transforms[index] = c.transform

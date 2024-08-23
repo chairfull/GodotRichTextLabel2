@@ -24,9 +24,16 @@ enum {
 	T_FLAG_CAP, T_FLAG_UPPER, T_FLAG_LOWER
 }
 
-enum Align { NONE, LEFT, CENTER, RIGHT, FILL }
+enum Align {
+	NONE, ## No alignment tag added.
+	LEFT, ## Autowraps string in "left" tags.
+	CENTER, ## Autowraps string in "center" tags.
+	RIGHT, ## Autowraps string in "right" tags.
+	FILL ## Autowraps string in "fill" tags.
+}
+
 enum OutlineStyle {
-	OFF,
+	OFF, ## No outline.
 	DARKEN, ## Outline will be darker than font color.
 	LIGHTEN ## Outline will be lighter than font color.
 }
@@ -107,20 +114,26 @@ var font := "":
 		add_theme_font_size_override("normal_font_size", font_size)
 		_redraw()
 
+## Custom font thickness when using bold tag.
 @export var font_bold_weight := 1.5:
 	set(f):
 		font_bold_weight = f
 		_update_subfonts()
 		
+## Custom font slant when using italics tag. (Can be negative.)
 @export var font_italics_slant := 0.25:
 	set(f):
 		font_italics_slant = f
 		_update_subfonts()
 
+## Custom font thickness when using italics tag.
 @export var font_italics_weight := -.25:
 	set(f):
 		font_italics_weight = f
 		_update_subfonts()
+
+## Used to prevent slow updating.
+@export var font_cache: Dictionary
 
 @export_group("Shadow", "shadow")
 ## Automatically sized based on font size.
@@ -164,7 +177,7 @@ func _update_theme_shadow():
 		_redraw()
 		_update_color()
 
-## Outlines will automatically be colored with font.
+## Automatically colorize outlines based on font color.
 @export var outline_mode: OutlineStyle = OutlineStyle.DARKEN:
 	set(o):
 		outline_mode = o
@@ -197,7 +210,7 @@ func _update_theme_shadow():
 @export var markdown_format_bold := "[b]%s[]" ## __bold__
 @export var markdown_format_bold_italics := "[bi]%s[]" ## ___bold italic___
 @export var markdown_format_highlight := "[green;sin]%s[]" ## ~highlight~
-@export var markdown_format_italics2 := "[i]*%s*[]" ## *italic*
+@export var markdown_format_italics2 := "[i;gray]*%s*[]" ## *italic*
 @export var markdown_format_bold2 := "[b]*%s*[]" ## **bold**
 @export var markdown_format_bold_italics2 := "%s" ## ***bold italic***
 
@@ -210,7 +223,9 @@ func _update_theme_shadow():
 ## Or array elements: "Slot 3 has $slots[3] in it.
 @export var context_enabled := true
 ## For use with $property to display node properties. 
-@export var context_path: NodePath = "/root/State"# used when request properties or calling pipe functions.
+@export var context_path: NodePath = "/root/State"
+## Extra parameters that can be accessed in context.
+@export_storage var context_state := {}
 ## Will attempt to call `to_string_nice()` on objects. Otherwise `.to_string()` is used.
 @export var context_nice_objects := true
 ## Will automatically add commas to integers: 1234 -> 1,234
@@ -222,7 +237,9 @@ func _update_theme_shadow():
 ## Add tag to all numbers?
 @export var autostyle_numbers := true
 ## Tag to wrap numbers in.
-@export var autostyle_numbers_tag := "[lime_green]%s[]"
+@export var autostyle_numbers_tag := "[salmon]%s[]"
+## Automatically detects :smile: emojis.
+@export var autostyle_emojis := true
 
 ## WARNING: Expieremental.
 @export var width_from_content := false:
@@ -253,6 +270,7 @@ var _stack := []
 var _state := {}
 var _meta := {}
 var _meta_hovered: Variant = null
+var _expression_error := OK
 @export_storage var _random: Array[int] ## Used in the effects as a random offset.
 
 func _init():
@@ -275,7 +293,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and _meta_hovered != null:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
-				# call a callable
+				# Call a callable.
 				if _meta_hovered in _meta:
 					if _meta[_meta_hovered] is Callable:
 						_meta[_meta_hovered].call()
@@ -284,7 +302,7 @@ func _gui_input(event: InputEvent) -> void:
 					else:
 						pressed.emit(_meta[_meta_hovered])
 			
-				# goto url
+				# Goto URL.
 				elif _meta_hovered.begins_with("https://"):
 					OS.shell_open(_meta_hovered)
 		
@@ -341,6 +359,10 @@ func _set_bbcode():
 		opened = {},
 		pipes = []
 	}
+	if not font_cache:
+		font_cache = {}
+		FontHelper.get_font_paths(font_cache)
+	
 	if color != Color.WHITE:
 		_push_color(color)
 	
@@ -348,9 +370,6 @@ func _set_bbcode():
 	
 	if color != Color.WHITE:
 		_pop_color(Color.WHITE)
-	
-	for e in custom_effects:
-		e.set_meta("text", get_parsed_text())
 	
 	seed(hash(get_parsed_text()))
 	_random = []
@@ -386,33 +405,16 @@ func uninstall_effects():
 		custom_effects.pop_back()
 
 func _preparse(btext :String) -> String:
-	# Replace $ properties.
+	# Replace $ and {} properties.
 	if context_enabled:
 		btext = replace_context(btext)
 	
-	# alignment
+	# Primary alignment.
 	match alignment:
 		1: btext = "[left]%s[]" % btext
 		2: btext = "[center]%s[]" % btext
 		3: btext = "[right]%s[]" % btext
 		4: btext = "[fill]%s[]" % btext
-	
-	# escaped brackets
-	btext = btext.replace("\\[", "[lb]")
-	btext = btext.replace("\\]", "[rb]")
-	
-	# nicefy up stuff that isn't tagged.
-	btext = _replace_outside(btext, TAG_OPENED, TAG_CLOSED, _preparse_untagged)
-	
-	return btext
-
-func _preparse_untagged(btext: String) -> String:
-	if btext == "":
-		return btext
-	
-	# Open + closed quotes.
-	if nicer_quotes_enabled:
-		btext = _format_between(btext, '"', nicer_quotes_format)
 	
 	# Markdown.
 	if markdown_enabled:
@@ -424,7 +426,24 @@ func _preparse_untagged(btext: String) -> String:
 		btext = _format_between(btext, "_", markdown_format_italics)
 		btext = _format_between(btext, "~", markdown_format_highlight)
 	
-	btext = replace_emojis(btext)
+	# Nicefy up stuff that isn't tagged.
+	btext = _replace_outside(btext, TAG_OPENED, TAG_CLOSED, _preparse_untagged)
+	
+	return btext
+
+# Parses anything outside of tags, like markdown and quotes.
+func _preparse_untagged(btext: String) -> String:
+	if btext == "":
+		return btext
+	
+	# Open + closed quotes.
+	if nicer_quotes_enabled:
+		btext = _format_between(btext, '"', nicer_quotes_format)
+	
+	# Replace emojis.
+	if autostyle_emojis:
+		btext = replace_emojis(btext)
+	
 	if autostyle_numbers:
 		btext = replace_numbers(btext)
 	
@@ -474,62 +493,67 @@ func _replace(string: String, pattern: String, call: Callable) -> String:
 func replace_emojis(string: String) -> String:
 	return _replace(string, r":([a-zA-Z0-9\+\-]+):", func(full: String, emoji: String):
 		if emoji in Emoji.NAMES:
-			return Emoji.NAMES[emoji]
-		return full
-	)
+			return "[:" + emoji + ":]"
+		return full)
 
 func replace_context(string: String) -> String:
-	return _replace(string, r"(?<!\\)\$[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*(?:[.:][a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)*(?:\[[^\]]*\]|\([^\)]*\))*", func(path: String, _e: String):
-		var value = get_expression(path.substr(1))
-		if _expression_error != OK:
-			return "[red]%s[]" % path
-		else:
-			if typeof(value) == TYPE_INT and context_nice_ints:
-				return commas(value)
-			elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_string_nice"):
-				return value.to_string_nice()
-			elif typeof(value) == TYPE_ARRAY and context_nice_array:
-				var nice_array := []
-				for item in value:
-					match typeof(item):
-						TYPE_OBJECT:
-							if item.has_method(&"to_string_nice"):
-								nice_array.append(item.to_string_nice())
-							elif "name" in item:
-								nice_array.append(item.name)
-							else:
-								nice_array.append(str(item))
-						_: nice_array.append(str(item))
-				value = ", ".join(nice_array)
-			return value
-		)
+	# $pattern
+	string = _replace(string, r"(?<!\\)\$[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)*(?:\([^\)]*\))?(?![^\[\]]*\])", func(path: String, _e: String):
+		return _get_expression_nice(path, path.trim_prefix("$")))
+	
+	# {} pattern
+	string = _replace(string, r"\{.*?\}", func(exp: String, _b: String):
+		return _get_expression_nice(exp, unwrap(exp, "{}")))
+	
+	return string
+
+func _get_expression_nice(exp: String, exp_clean: String) -> String:
+	var value = get_expression(exp_clean)
+	if _expression_error != OK:
+		return "[red]%s[]" % exp
+	else:
+		if typeof(value) == TYPE_INT and context_nice_ints:
+			return commas(value)
+		elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_string_nice"):
+			return value.to_string_nice()
+		elif typeof(value) == TYPE_ARRAY and context_nice_array:
+			var nice_array := []
+			for item in value:
+				match typeof(item):
+					TYPE_OBJECT:
+						if item.has_method(&"to_string_nice"):
+							nice_array.append(item.to_string_nice())
+						elif "name" in item:
+							nice_array.append(item.name)
+						else:
+							nice_array.append(str(item))
+					_: nice_array.append(str(item))
+			value = ", ".join(nice_array)
+		return str(value)
 
 func replace_numbers(string: String) -> String:
 	return _replace(string, r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b", func(num: String, _e: String):
-		return autostyle_numbers_tag % num
-		)
+		return autostyle_numbers_tag % num)
 
 func _parse(btext: String):
-	while TAG_OPENED in btext:
-		var p := btext.split(TAG_OPENED, true, 1)
-		
-		# add head string
-		if p[0]:
-			_add_text(p[0])
-		
-		p = p[1].split(TAG_CLOSED, true, 1)
-		
-		# right side as leftover
-		btext = "" if len(p) == 1 else p[1]
-		
-		# go through all tags
-		_parse_tags(p[0])
-	
-	if btext:
-		_add_text(btext)
+	var regex := RegEx.create_from_string(r"\[\[.*?\]|\[.*?\]")
+	var offset := 0
+	var output := ""
+	while true:
+		var m := regex.search(btext, offset)
+		if not m:
+			break
+		_add_text(btext.substr(offset, m.get_start()-offset))
+		var tags := m.get_string()
+		if tags.begins_with("[["):
+			_add_text(tags.trim_prefix("["))
+		else:
+			_parse_tags(unwrap(tags, "[]"))
+		offset = m.get_end()
+	_add_text(btext.substr(offset))
+	return output
 
 func _parse_tags(tags_string: String):
-	# check for shortcuts
 	var p := tags_string.split(";")
 	var tags := []
 	for i in len(p):
@@ -538,16 +562,16 @@ func _parse_tags(tags_string: String):
 	
 	var added_stack := false
 	for tag in tags:
-		# close last
+		# Empty = close tags.
 		if tag == "":
 			if added_stack and len(_stack) and not len(_stack[-1]):
 				_stack.pop_back()
-			if len(_stack) and not len(_stack[-1]):
-				_add_text("[]")
+			#if len(_stack) and not len(_stack[-1]):
+				#_add_text("[]")
 			_stack_pop()
 			added_stack = false
 		
-		# close all
+		# Close all.
 		elif tag == "/":
 			if added_stack and len(_stack) and not len(_stack[-1]):
 				_stack.pop_back()
@@ -555,10 +579,10 @@ func _parse_tags(tags_string: String):
 				_stack_pop()
 			added_stack = false
 		
-		# close old fashioned way
+		# Close old fashioned way
 		elif tag.begins_with("/"):
 			# TODO
-			pass
+			push_error("Old fashioned closing not yet implemented.")
 		
 		else:
 			if not added_stack:
@@ -569,43 +593,47 @@ func _parse_tags(tags_string: String):
 	if added_stack and len(_stack) and not len(_stack[-1]):
 		_stack.pop_back()
 
-var _expression_error := OK
-func get_expression(ex: String, state := {}):
+func get_expression(ex: String):
 	_expression_error = OK
 	var node := get_node(context_path)
 	var e := Expression.new()
-	_expression_error = e.parse(ex, state.keys())
-	if _expression_error != OK:
-		return null
-	var value = e.execute(state.values(), node, false)
+	var returned: Variant = null
+	var con_args := context_state.keys() if context_state else []
+	var con_vals := context_state.values() if context_state else []
+	
+	_expression_error = e.parse(ex, con_args)
+	if _expression_error == OK:
+		returned = e.execute(con_vals, node, false)
+	
 	if e.has_execute_failed():
 		_expression_error = FAILED
 		push_error(e.get_error_text())
 		return null
-	return value
+	
+	return returned
 
 func _parse_tag(tag: String):
 	# is a !$^@ StringAction?
-	if tag[0] in "~$^@":
-		var got = get_expression(tag.substr(1))
-		# no value was found
-		if got == null:
-			push_error("BBCode: Couldn't replace '%s'." % tag)
-			push_bgcolor(Color.RED)
-			_add_text("[%s]" % tag)
-			pop()
-		else:
-			# objects may implement a get_string() method
-			_parse(str(got))
-		return
-		
-	# COLOR. This allows doing: "[{color}]Text[]".format({color=Color.RED})
+	#if tag[0] in "~$^@":
+		#var got = get_expression(tag.substr(1))
+		## no value was found
+		#if got == null:
+			#push_error("BBCode: Couldn't replace '%s'." % tag)
+			#push_bgcolor(Color.RED)
+			#_add_text("[%s]" % tag)
+			#pop()
+		#else:
+			## objects may implement a get_string() method
+			#_parse(str(got))
+		#return
+	
+	# COLOR. This allows doing: "[%s]Text[]" % Color.RED
 	if is_wrapped(tag, "()"):
 		var rgba = unwrap(tag, "()").split_floats(",")
 		_push_color(Color(rgba[0], rgba[1], rgba[2], rgba[3]))
 		return
 	
-	# PIPE.
+	# Pipe. TODO
 	if tag.begins_with("|"):
 		_push_pipe(tag.substr(1))
 		return
@@ -652,16 +680,19 @@ func _passes_condition(cond: String, raw: String) -> bool:
 	
 	return false
 
-static func has_font(id: String) -> bool:
-	return id in FontHelper.get_font_paths({})
+func _has_font(id: StringName) -> bool:
+	return id in font_cache
 
-static func has_emoji_font() -> bool:
-	return FileAccess.file_exists("res://fonts/emoji_font.tres")
+func _get_font(id: StringName) -> Font:
+	if font_cache[id] is String:
+		font_cache[id] = load(font_cache[id])
+	return font_cache[id]
 
-static func get_emoji_font() -> Font:
-	if has_emoji_font():
-		return load("res://fonts/emoji_font.tres")
-	return null
+func _has_emoji_font() -> bool:
+	return "emoji_font" in font_cache
+
+func _get_emoji_font() -> Font:
+	return _get_font(&"emoji_font")
 
 func _parse_tag_info(tag: String, info: String, raw: String):
 	if not _passes_condition(tag, raw):
@@ -669,16 +700,16 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 	
 	# font sizes
 	if len(tag) and tag[0].is_valid_int():
-		_push_font_size(int(_state.font_size * to_number(tag)))
+		_push_font_size(int(_state.font_size * _number(tag)))
 		return
 	
 	# emoji: old style
 	if tag in Emoji.OLDIE:
-		var efont := get_emoji_font()
+		var efont := _get_emoji_font()
 		if efont != null:
 			push_font(efont)
 			push_font_size(ceil(_state.font_size * emoji_scale))
-			append_text(Emoji.OLDIE[tag])
+			add_text(Emoji.OLDIE[tag])
 			pop()
 			pop()
 		else:
@@ -689,19 +720,17 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 	if tag.begins_with(":") and tag.ends_with(":"):
 		var emoji_name := tag.trim_suffix(":").trim_prefix(":")
 		if emoji_name in Emoji.NAMES:
-			var efont := get_emoji_font()
+			var efont := _get_emoji_font()
 			if efont != null:
-				push_font(efont)
-				push_font_size(ceil(_state.font_size * emoji_scale))
-				append_text(Emoji.NAMES[emoji_name])
-				pop()
+				push_font(efont, ceil(_state.font_size * emoji_scale))
+				add_text(Emoji.NAMES[emoji_name])
 				pop()
 			else:
 				append_text(Emoji.NAMES[emoji_name])
 			return
 	
 	# is a custom font?
-	if has_font(tag):
+	if _has_font(tag):
 		_push_font(tag)
 		return
 	
@@ -726,27 +755,24 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 		"lita": _push_color(Color(_state.color.lightened(.33), .5))
 		"hide": _push_color(Color.TRANSPARENT)
 		
-		# shift the hue. default to 50%.
-		"hue": _push_color(hue_shift(_state.color, to_number(info) if info else 0.5))
+		# Shift the hue. default to 50%.
+		"hue": _push_color(hue_shift(_state.color, _number(info) if info else 0.5))
 		
 		"meta": _push_meta(info)
 		"hint": _push_hint(info)
-		
-		"lb": _add_text("[")
-		"rb": _add_text("]")
 		
 		_:
 			if not _has_effect(tag):
 				pass
 			
-			# custom effect
+			# Custom effect.
 			if _has_effect(tag):
 				_push_effect(tag, info)
 			
 			elif not _parse_tag_unused(tag, info, raw):
 				append_text("[%s]" % raw)
 
-static func to_number(s: String) -> float:
+static func _number(s: String) -> float:
 	if s.is_valid_int():
 		return s.to_int() / 100.0
 	elif s.is_valid_float():
@@ -776,6 +802,7 @@ func _preprocess_pipe(s: String) -> String:
 	return s
 
 func _add_text(t: String):
+	t = t.replace("[[", "[")
 	if len(_state.pipes):
 		var piped := t
 		for pipe in _state.pipes:
@@ -836,7 +863,8 @@ func _push_effect(effect: String, info: String):
 	
 	_install_effect(effect)
 	_stack_push(T_EFFECT, effect)
-	append_text(("[%s]" % effect) if info == "" else ("[%s %s]" % [effect, info]))
+	var effect_text := ("[%s]" % effect) if info == "" else ("[%s %s]" % [effect, info])
+	append_text(effect_text)
 
 func _push_pipe(pipe: String):
 	_stack_push(T_PIPE)
@@ -848,7 +876,7 @@ func _pop_pipe():
 func _push_font(font: String):
 	_stack_push(T_FONT, _state.font)
 	_state.font = font
-	push_font(load(FontHelper.get_font_paths({})[font]))
+	push_font(_get_font(font))
 
 func _pop_font(last_font):
 	_state.font = last_font
@@ -879,15 +907,11 @@ func _push_color(clr: Color):
 	_state.color = clr
 	push_color(clr)
 	
-	# outline color
+	# Outline color.
 	var outline_color := _get_outline_color(clr)
-#	match outline_mode:
-#		OutlineStyle.DARKEN: outline_color = clr.darkened(outline_adjust)
-#		OutlineStyle.LIGHTEN: outline_color = clr.lightened(outline_adjust)
-#	outline_color.h = wrapf(outline_color.h + outline_hue_adjust, 0.0, 1.0)
 	push_outline_color(outline_color)
 	
-	# outline size
+	# Outline size.
 	if outline_size > 0:
 		push_outline_size(outline_size)
 
@@ -897,8 +921,6 @@ func _get_outline_color(clr: Color) -> Color:
 		OutlineStyle.DARKEN: out = clr.darkened(outline_adjust)
 		OutlineStyle.LIGHTEN: out = clr.lightened(outline_adjust)
 	return hue_shift(out, outline_hue_adjust)
-#	out.h = wrapf(out.h + outline_hue_adjust, 0.0, 1.0)
-#	return out
 
 func _pop_color(data):
 	_state.color = data
@@ -984,14 +1006,16 @@ func _part(s :String, begin: int=0, end=null) -> String:
 	
 	return s.substr(begin, end-begin)
 
-static func info_to_dict(info:String) -> Dictionary:
-	var out:Dictionary = {}
+static func info_to_dict(info: String) -> Dictionary:
+	var out := {}
 	if "=" in info:
-		for part in info.split(" "):
-			var kv = part.split("=", true, 1)
+		var re := RegEx.create_from_string(r'(?:"[^"]*"|\[[^\]]*\]|\([^)]*\)|\S)+')
+		for rm in re.search_all(info):
+			var kv = rm.get_string().split("=", true, 1)
 			out[kv[0]] = _str2var(kv[1])
 	return out
 
+# Allows setting .2 without erroring.
 static func _str2var(s: String) -> Variant:
 	# allow floats starting with a decimal: .5
 	if s.begins_with(".") and s.substr(1).is_valid_int():
@@ -1057,7 +1081,7 @@ func _get_character_random(index: int) -> int:
 	return 0
 
 func _install_effect(id:String) -> bool:
-	# already installed?
+	# Already installed?
 	for e in custom_effects:
 		if e.resource_name == id:
 			return true

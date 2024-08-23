@@ -30,11 +30,19 @@ static func get_font_paths(out: Dictionary, path := FONT_DIR) -> Dictionary:
 				get_font_paths(out, path.path_join(file_name))
 			else:
 				if file_name.get_extension().to_lower() in FONT_FORMATS:
-					var full_path := path.path_join(file_name)
-					var id := full_path.get_file().get_basename()
-					for pt in PATTERN_ALL:
-						id = id.replace(pt, "")
-					out[id] = full_path
+					# Ignore emoji fonts, unless it is explicitly wanted.
+					if "emoji" in file_name.get_file().to_lower():
+						if not "emoji_font" in out:
+							out["emoji_font"] = path.path_join(file_name)
+					else:
+						var full_path := path.path_join(file_name)
+						var id := full_path.get_file().get_basename()
+						for pt in PATTERN_ALL:
+							id = id.replace(pt, "")
+						out[id] = full_path
+				elif file_name.get_file().ends_with("emoji_font.tres"):
+					out["emoji_font"] = path.path_join(file_name)
+			
 			file_name = dir.get_next()
 	else:
 		push_error("No path: %s." % path)
@@ -46,16 +54,16 @@ static func _find_variant(fonts: Dictionary, head: String, tails: Array) -> Stri
 			return fonts[head + tail]
 	return ""
 
-static func set_fonts(node: Node, fname: String, bold_weight := BOLD_WEIGHT, italics_slant := ITALICS_SLANT, italics_weight := ITALICS_WEIGHT):
-	var fonts := get_fonts(fname, bold_weight, italics_slant, italics_weight)
+static func set_fonts(node: Node, fname: String, bold_weight := BOLD_WEIGHT, italics_slant := ITALICS_SLANT, italics_weight := ITALICS_WEIGHT, font_paths := {}):
+	var fonts := get_fonts(fname, bold_weight, italics_slant, italics_weight, font_paths)
 	if node is RichTextLabel:
 		for font_name in fonts:
 			node.add_theme_font_override(font_name, fonts[font_name])
 	else:
 		push_error("TODO")
 
-static func get_fonts(fname: String, bold_weight := BOLD_WEIGHT, italics_slant := ITALICS_SLANT, italics_weight := ITALICS_WEIGHT) -> Dictionary:
-	var fonts := get_font_paths({})
+static func get_fonts(fname: String, bold_weight := BOLD_WEIGHT, italics_slant := ITALICS_SLANT, italics_weight := ITALICS_WEIGHT, font_paths := {}) -> Dictionary:
+	var fonts := font_paths if font_paths else get_font_paths({})
 	var out := {}
 	
 	# Normal font.
