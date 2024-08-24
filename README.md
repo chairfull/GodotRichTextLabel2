@@ -59,12 +59,12 @@ This node is meant for dialogue systems and cinematics.
 
 |Tag|Description|Arguments|Example|Self Closing|
 |---|-----------|---------|-------|------------|
-|`wait` or `w`|Waits a second.|Number of seconds.|`Wait...[w=2] Did you hear...[w] *bang*`|true|
-|`hold` or `h`|Holds until `advance()` is called.|`[h]`|true|
-|`pace` or `p`|Sets animation speed.|Scale.|`[p=2.0]Fast talker.[p=0.2]Slow talker.[p]Normal speed.`|true|
-|`skip`|Skips animation across selected items.||`They call it [skip]The Neverending Forest[].`|false|
-|`$`|Runs an expression at this spot in the animation.|Expression.|`Did you hear something...[~play_sound("gurgle")]`|true|
-|`#`|Calls `on_bookmark.emit()` with the id when reached.|Bookmark id.|`He told me [#quote]the haunted forest[#endquote] wasn't so haunted.[#end]`|true|
+|`wait` or `w`|Waits a second.|Number of seconds.|`Wait...[w=2] Did you hear...[w] *bang*`|✅|
+|`hold` or `h`|Holds until `advance()` is called.|`[h]`||✅|
+|`pace` or `p`|Sets animation speed.|Scale.|`[p=2.0]Fast talker.[p=0.2]Slow talker.[p]Normal speed.`|✅|
+|`skip`|Skips animation across selected items.||`They call it [skip]The Neverending Forest[].`|❌|
+|`$`|Runs an expression at this spot in the animation.|Expression.|`Did you hear something...[~play_sound("gurgle")]`|✅|
+|`#`|Calls `on_bookmark.emit()` with the id when reached.|Bookmark id.|`He told me [#quote]the haunted forest[#endquote] wasn't so haunted.[#end]`|✅|
 
 If `shortcut_expression = true` you can use the `<code expression>` pattern instead of the `[!code expression]` pattern.
 ```
@@ -72,7 +72,6 @@ Did you hear something...[wait][~play_sound("gurgle")] Uh oh![~player.fear = 100
 Did you hear something...[wait]<play_sound("gurgle")> Uh oh!<player.fear = 100.0> Ahh...
 ```
 
-```
 If `shortcut_bookmark = true` you can use the `#bookmark` pattern instead of the `[#bookmark]` pattern.
 ```
 He told me#quote the haunted forest#endquote wasn't so haunted.#end
