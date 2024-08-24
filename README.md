@@ -1,7 +1,9 @@
 # RichTextLabel2
 `v1.1`
 
-Reduce effort needed to display state data and stylize it.
+Two Nodes:
+- `RichTextLabel2`: Reduce effort needed to display state data and stylize it.
+- `RichTextAnimation`: For dialogue and cinematics, animates text in and out.
 
 | | |
 |-|-|
