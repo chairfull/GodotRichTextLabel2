@@ -238,6 +238,10 @@ func _update_theme_shadow():
 @export var autostyle_numbers := true
 ## Tag to wrap numbers in.
 @export var autostyle_numbers_tag := "[salmon]%s[]"
+## Automatically pad numbers to limit trailing decimals?
+@export var autostyle_numbers_pad_decimals := true
+## How many decimal places?
+@export var autostyle_numbers_decimals := 2
 ## Automatically detects :smile: emojis.
 @export var autostyle_emojis := true
 
@@ -566,7 +570,10 @@ func _get_expression_nice(exp: String, exp_clean: String) -> String:
 
 func replace_numbers(string: String) -> String:
 	return _replace(string, r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b", func(strings):
-		return autostyle_numbers_tag % strings[0])
+		var numstr: String = strings[0]
+		if autostyle_numbers_pad_decimals and "." in numstr:
+			numstr = numstr.pad_decimals(autostyle_numbers_decimals)
+		return autostyle_numbers_tag % numstr)
 
 func _parse(btext: String):
 	var regex := RegEx.create_from_string(r"\[\[.*?\]|\[.*?\]")

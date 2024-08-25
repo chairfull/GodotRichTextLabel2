@@ -91,6 +91,9 @@ If an emoji tag is used `:smile:` or `[:smile:]` an `emoji_font` metadata key wi
 
 # Changes
 - 1.2
+	- Added auto styling of decimal numbers:
+		- `autostyle_numbers_pad_decimals` Enable?
+		- `autostyle_numbers_decimals` Number of decimals.
 	- Added 4 new effects:
 		- `[curspull]` shows how to animate based on cursor position.
 		- `[wack]` randomly scales and rotates characters.
