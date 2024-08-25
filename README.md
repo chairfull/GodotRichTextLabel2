@@ -84,7 +84,7 @@ This node is meant for dialogue systems and cinematics.
 |`hold` or `h`|Holds until `advance()` is called.|`[h]`||✅|
 |`pace` or `p`|Sets animation speed.|Scale.|`[p=2.0]Fast talker.[p=0.2]Slow talker.[p]Normal speed.`|✅|
 |`skip`|Skips animation across selected items.||`They call it [skip]The Neverending Forest[].`|❌|
-|`$`|Runs an expression at this spot in the animation.|Expression.|`Did you hear something...[~play_sound("gurgle")]`|✅|
+|`$`|Runs an expression at this spot in the animation.|Expression.|`Did you hear something...[$play_sound("gurgle")]`|✅|
 |`#`|Calls `on_bookmark.emit()` with the id when reached.|Bookmark id.|`He told me [#quote]the haunted forest[#endquote] wasn't so haunted.[#end]`|✅|
 
 ## Animations
@@ -105,7 +105,7 @@ This node is meant for dialogue systems and cinematics.
 
 If `shortcut_expression = true` you can use the `<code expression>` pattern instead of the `[!code expression]` pattern.
 ```
-Did you hear something...[wait][~play_sound("gurgle")] Uh oh![~player.fear = 100.0] Ahh...
+Did you hear something...[wait][$play_sound("gurgle")] Uh oh![$player.fear = 100.0] Ahh...
 Did you hear something...[wait]<play_sound("gurgle")> Uh oh!<player.fear = 100.0> Ahh...
 ```
 
