@@ -5,11 +5,14 @@ Two Nodes:
 - `RichTextLabel2`: Reduce effort needed to display state data and stylize it.
 - `RichTextAnimation`: For dialogue and cinematics, animates text in and out.
 
-https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 
 | | |
 |-|-|
 |![](README/fromthis.png)|![](README/tothis.png)|
+
+https://github.com/user-attachments/assets/724558ad-f98e-40bb-8f30-dc413705c166
+
+https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 
 # Features
 - Multi bbcode tags + easy closing + auto color names: `[deep_sky_blue;b]Bold blue[] and [orange;i]Italic orange[].`
