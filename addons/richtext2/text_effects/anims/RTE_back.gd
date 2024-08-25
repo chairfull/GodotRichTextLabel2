@@ -5,12 +5,6 @@ extends RichTextEffectBase
 ## Syntax: [back scale=8.0][]
 var bbcode = "back"
 
-const c1 := 1.70158
-const c3 := c1 + .5
-
-func ease_back(x):
-	return c3 * x * x * x - c1 * x * x
-
 func _process_custom_fx(c: CharFXTransform):
 	var a := 1.0 - get_animation_delta(c)
 	var scale = c.env.get("scale", 1.0)

@@ -46,7 +46,7 @@ enum Style {
 }
 
 ## Animation to play.
-@export var animation: String = "fader":
+@export_storage var animation: String = "fader":
 	set(a):
 		animation = a
 		_redraw()
@@ -125,6 +125,9 @@ var ctc_tween: Tween
 ## Will signal when *stars* have started and finished.
 ## Usefulf for triggering sounds or animations.
 @export var signal_stars := true
+
+## We need to cache local_mouse_position as it is slow to call repeatedly.
+var _mouse_position: Vector2
 
 func _set_bbcode():
 	_triggers.clear()
@@ -241,27 +244,32 @@ func finish():
 
 func _preparse(btext: String) -> String:
 	if signal_quotes:
-		btext = _replace(btext, r'"([^"]*)"', func(a, b):
+		btext = _replace(btext, r'"([^"]*)"', func(strings):
+			var a = strings[0]
 			return "\"[quote %s]%s[]\"" % [a, unwrap(a, '""')])
 	
 	if signal_stars:
-		btext = _replace(btext, r'\*([^*]+)\*', func(a, b):
+		btext = _replace(btext, r'\*([^*]+)\*', func(strings):
+			var a = strings[0]
 			return "[stars %s]*%s*[]" % [unwrap(a, "**"), unwrap(a, "**")])
 	
 	# Converts <code pattern> into [$code pattern].
 	if shortcut_expression:
-		btext = _replace(btext, r"<([^>]+)>", func(a, b):
+		btext = _replace(btext, r"<([^>]+)>", func(strings):
+			var a = strings[0]
 			if a.begins_with("<<"):
 				return a.replace("<<", "<")
 			return "[$%s]" % unwrap(a, "<>"))
 	
 	# Converts #bookmark into [#bookmark].
 	if shortcut_bookmark:
-		btext = _replace(btext, r"(?<!#)(?<!\[)#\w*[^_\W](?!\])", func(a, b): return "[%s]" % a)
+		btext = _replace(btext, r"(?<!#)(?<!\[)#\w*[^_\W](?!\])", func(strings):
+			return "[%s]" % strings[0])
 		btext = btext.replace("##", "#")
 	
 	# Wraps the animation tag.
 	btext = "[%s]%s[]" % [animation, super(btext)]
+	
 	return btext
 
 func _parse_tag_unused(tag: String, info: String, raw: String) -> bool:
@@ -398,6 +406,8 @@ func _update_ctc_position():
 func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() and _play:
 		effect_time += delta
+	
+	_mouse_position = get_local_mouse_position()
 	
 	if len(_alpha) != get_total_character_count():
 		return

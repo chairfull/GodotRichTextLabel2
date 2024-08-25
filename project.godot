@@ -15,6 +15,10 @@ run/main_scene="res://demo/demo.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[gui]
+
+common/snap_controls_to_pixels=false
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

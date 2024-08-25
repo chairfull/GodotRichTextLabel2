@@ -1,6 +1,6 @@
-# Makes words shake around.
 @tool
 extends RichTextEffectBase
+## Makes words shake around.
 
 ## Syntax: [jit2 scale=1.0 freq=8.0][]
 var bbcode = "jit2"

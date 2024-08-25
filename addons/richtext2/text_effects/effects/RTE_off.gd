@@ -1,18 +1,9 @@
-# Offsets characters by an amount.
 @tool
-extends RichTextEffect
+extends RichTextEffectBase
+## Offsets characters by an amount.
 
-# Syntax: [off][]
+## Syntax: [off][]
 var bbcode = "off"
-
-func _get_method_info(method: String):
-	return {
-		desc="Offset characters by an amount",
-		kwargs={
-			x={desc="X distance to offset"},
-			y={desc="Y distance to offset"}
-		}
-	}
 
 func to_float(s: String):
 	if s.begins_with("."):

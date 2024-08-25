@@ -1,9 +1,11 @@
 # RichTextLabel2
-`v1.1`
+`v1.2` [Demo](https://github.com/chairfull/GodotRichTextLabelDemo)
 
 Two Nodes:
 - `RichTextLabel2`: Reduce effort needed to display state data and stylize it.
 - `RichTextAnimation`: For dialogue and cinematics, animates text in and out.
+
+https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 
 | | |
 |-|-|
@@ -55,7 +57,7 @@ Fonts will be discovered wherever they are.
 
 This node is meant for dialogue systems and cinematics.
 
-https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
+
 
 ## Animation Tags
 
@@ -88,6 +90,19 @@ Emojis sometimes lag on some computers, which I get around by creating a custom 
 If an emoji tag is used `:smile:` or `[:smile:]` an `emoji_font` metadata key will be created with the font.
 
 # Changes
+- 1.2
+	- Added 2 new effects:
+		- `[curspull]` shows how to animate based on cursor position.
+		- `[wack]` randomly scales and rotates characters.
+		- `[beat]` pulses it's scale and color every second.
+	- Animation
+		- Added 2 new animations:
+			- `[fromcursor]` which transitions letters to and from cursor position.
+			- `[growin]` scales characters in, overshooting, then scaling to proper size.
+			- `[offin]` moves characters in from an left offset.
+	- Tweaked `[cuss]` `[heart]` `[rain]` `[sway]` `[uwu]`.
+	- Fixed regression in effects based on text characters.
+	- Fixed Markdown symbols catching when inside `[] {} or <>`.
 - 1.1
 	- Added `context_state: Dictionary` for passing additional arguments available in expressions.
 	- Added `{}` pattern for including complex expressions. Example: `{lerp(score, 2, 0.2) * PI}`.

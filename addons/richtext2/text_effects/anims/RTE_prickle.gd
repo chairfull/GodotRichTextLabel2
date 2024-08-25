@@ -1,9 +1,9 @@
-# Fades characters in more randomly.
-# You should set 'fade_speed' to a low value for this to look right. 
 @tool
 extends RichTextEffectBase
+## Fades characters in more randomly.
+## You should set 'fade_speed' to a low value for this to look right. 
 
-# Syntax: [prickle pow=2][]
+## Syntax: [prickle pow=2][]
 var bbcode = "prickle"
 
 func _process_custom_fx(c: CharFXTransform):

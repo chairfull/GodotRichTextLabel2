@@ -1,6 +1,6 @@
-## Fades words in one at a time.
 @tool
 extends RichTextEffectBase
+## Fades words in one at a time.
 
 ## Syntax: [fader][]
 var bbcode = "fader"

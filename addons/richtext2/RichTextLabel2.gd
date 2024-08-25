@@ -418,18 +418,49 @@ func _preparse(btext :String) -> String:
 	
 	# Markdown.
 	if markdown_enabled:
-		btext = _format_between(btext, "***", markdown_format_bold_italics2)
-		btext = _format_between(btext, "___", markdown_format_bold_italics)
-		btext = _format_between(btext, "**", markdown_format_bold2)
-		btext = _format_between(btext, "__", markdown_format_bold)
-		btext = _format_between(btext, "*", markdown_format_italics2)
-		btext = _format_between(btext, "_", markdown_format_italics)
-		btext = _format_between(btext, "~", markdown_format_highlight)
+		# Hide bbcode with placeholders.
+		var bbcode_placeholder: Array[String]
+		btext = _replace(btext, r"\[[^\]]*\]|\{[^}]*\}|<[^>]*>", func(strings):
+			var index := str(len(bbcode_placeholder))
+			bbcode_placeholder.append(strings[0])
+			return "&&" + index + "&&")
+		
+		# Replace markdown.
+		btext = _replace(btext, r"(\*{1,3}[^*]+?\*{1,3}|_{1,3}[^_]+?_{1,3}|~[^~]+~)", func(strings):
+			var tag: String = strings[0]
+			# TODO: Improve this.
+			if is_style(tag, "***"): return markdown_format_bold_italics2 % unwrap_stype(tag, "***")
+			if is_style(tag, "___"): return markdown_format_bold_italics % unwrap_stype(tag, "___")
+			if is_style(tag, "**"): return markdown_format_bold2 % unwrap_stype(tag, "**")
+			if is_style(tag, "__"): return markdown_format_bold % unwrap_stype(tag, "__")
+			if is_style(tag, "*"): return markdown_format_italics2 % unwrap_stype(tag, "*")
+			if is_style(tag, "_"): return markdown_format_italics % unwrap_stype(tag, "_")
+			if is_style(tag, "~"): return markdown_format_highlight % unwrap_stype(tag, "~")
+			return tag
+		)
+		
+		# Replace the placeholders.
+		btext = _replace(btext, r"&&(\d+)&&", func(strings):
+			return bbcode_placeholder[strings[1].to_int()])
+		
+		#btext = _format_between(btext, "***", markdown_format_bold_italics2)
+		#btext = _format_between(btext, "___", markdown_format_bold_italics)
+		#btext = _format_between(btext, "**", markdown_format_bold2)
+		#btext = _format_between(btext, "__", markdown_format_bold)
+		#btext = _format_between(btext, "*", markdown_format_italics2)
+		#btext = _format_between(btext, "_", markdown_format_italics)
+		#btext = _format_between(btext, "~", markdown_format_highlight)
 	
 	# Nicefy up stuff that isn't tagged.
 	btext = _replace_outside(btext, TAG_OPENED, TAG_CLOSED, _preparse_untagged)
 	
 	return btext
+
+static func is_style(s: String, style: String) -> bool:
+	return s.begins_with(style) and s.ends_with(style)
+
+static func unwrap_stype(s: String, style: String) -> String:
+	return s.trim_prefix(style).trim_suffix(style)
 
 # Parses anything outside of tags, like markdown and quotes.
 func _preparse_untagged(btext: String) -> String:
@@ -450,7 +481,7 @@ func _preparse_untagged(btext: String) -> String:
 	return btext
 
 func _format_between(st: String, tag: String, frmt: String) -> String:
-	return _replace_between(st, tag, func(a, b): return frmt % b)
+	return _replace_between(st, tag, func(strings): return frmt % strings[1])
 
 # new version that works regardless of bbcode in the middle.
 func _replace_between(st: String, tag: String, call: Callable) -> String:
@@ -485,24 +516,26 @@ func _replace(string: String, pattern: String, call: Callable) -> String:
 		if not m:
 			break
 		output += string.substr(offset, m.get_start(0)-offset)
-		output += str(call.call(m.get_string(0), m.get_string(1)))
+		output += str(call.call(m.strings))
 		offset = m.get_end(0)
 	output += string.substr(offset)
 	return output
 
 func replace_emojis(string: String) -> String:
-	return _replace(string, r":([a-zA-Z0-9\+\-]+):", func(full: String, emoji: String):
-		if emoji in Emoji.NAMES:
-			return "[:" + emoji + ":]"
-		return full)
+	return _replace(string, r":([a-zA-Z0-9\+\-]+):", func(strings):
+		if strings[1] in Emoji.NAMES:
+			return "[:" + strings[1] + ":]"
+		return strings[0])
 
 func replace_context(string: String) -> String:
 	# $pattern
-	string = _replace(string, r"(?<!\\)\$[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)*(?:\([^\)]*\))?(?![^\[\]]*\])", func(path: String, _e: String):
+	string = _replace(string, r"(?<!\\)\$[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)*(?:\([^\)]*\))?(?![^\[\]]*\])", func(strings):
+		var path = strings[0]
 		return _get_expression_nice(path, path.trim_prefix("$")))
 	
 	# {} pattern
-	string = _replace(string, r"\{.*?\}", func(exp: String, _b: String):
+	string = _replace(string, r"\{.*?\}", func(strings):
+		var exp = strings[0]
 		return _get_expression_nice(exp, unwrap(exp, "{}")))
 	
 	return string
@@ -532,8 +565,8 @@ func _get_expression_nice(exp: String, exp_clean: String) -> String:
 		return str(value)
 
 func replace_numbers(string: String) -> String:
-	return _replace(string, r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b", func(num: String, _e: String):
-		return autostyle_numbers_tag % num)
+	return _replace(string, r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b", func(strings):
+		return autostyle_numbers_tag % strings[0])
 
 func _parse(btext: String):
 	var regex := RegEx.create_from_string(r"\[\[.*?\]|\[.*?\]")
@@ -613,20 +646,6 @@ func get_expression(ex: String):
 	return returned
 
 func _parse_tag(tag: String):
-	# is a !$^@ StringAction?
-	#if tag[0] in "~$^@":
-		#var got = get_expression(tag.substr(1))
-		## no value was found
-		#if got == null:
-			#push_error("BBCode: Couldn't replace '%s'." % tag)
-			#push_bgcolor(Color.RED)
-			#_add_text("[%s]" % tag)
-			#pop()
-		#else:
-			## objects may implement a get_string() method
-			#_parse(str(got))
-		#return
-	
 	# COLOR. This allows doing: "[%s]Text[]" % Color.RED
 	if is_wrapped(tag, "()"):
 		var rgba = unwrap(tag, "()").split_floats(",")

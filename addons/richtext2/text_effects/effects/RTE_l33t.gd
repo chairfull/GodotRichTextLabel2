@@ -1,7 +1,8 @@
 @tool
 extends RichTextEffectBase
+## Converts numbers to letters in a way that is still readable with effort.
 
-## Syntax: [l33t][/l33t]
+## Syntax: [l33t][]
 var bbcode = "l33t"
 
 var leet = {
@@ -21,8 +22,9 @@ var leet = {
 	"o": "0",
 }
 
-func _process_custom_fx(char_fx: CharFXTransform):
-	var c := get_char(char_fx)
-	if c in leet:
-		set_char(char_fx, leet[c])
+func _process_custom_fx(c: CharFXTransform):
+	var ch := get_char(c)
+	if ch in leet:
+		if rand_anim(c) > .2:
+			set_char(c, leet[ch])
 	return true
