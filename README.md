@@ -100,41 +100,47 @@ There are two ways to use them.
 - Or as a tag `[|pipe]Text to be passed.[]`
 
 ```gd
-These are both doing the same thing.
+These are all doing the same thing.
 "We'll visit {location|capitalize} tomorrow."
 "We'll visit {location.capitalize()} tomorrow."
+"We'll visit [|capitalize]$location[] tomorrow."
 ```
 
 Arguments can also be passed as a space seperated list:
 ```gd
-# Both these work the same.
+# These are all the same.
 "Day of week: {time.day_of_week|substr 0 3}"
 "Day of week: {time.day_of_week.substr(0, 3)}"
+"Day of week: [|substr 0 3]$time.day_of_week[]"
 ```
 
-The real power is in adding your own. Pipes first look for a method inside the context node.
+The real power is in adding your own. Pipes try to use a method inside the context node.
 ```gd
 # It first looks for methods in the context object.
 func cap(x):
 	return x.capitalize()
 
 func oooify(x):
-	return s.replace("o", "ooo").replace("O", "OOO")
+	if cow_mode == CowMode.ACTIVATED:
+		return x.replace("o", "ooo").replace("O", "OOO")
+	else:
+		return x
 
 # Location name gets capitalized, and all it's O's stretched out.
 "We'll visit {location|cap|ooify}."
 
-# Pipes can be used in BBCode.
+# Or we may want to change entire dialogue based on state data.
 [|ooify]Wow those cows were mooing.[]
 ```
 
 Or maybe you want to stylize content based on the characters mood.
 ```gd
+# If returning BBCode, it has to be old fashioned style.
 func mood(s: String, npc_id: String):
 	match npcs[npc_id].emotion:
-		HAPPY: return "[color=yellow]%s[/color]" % s
-		SAD: return "[color=aqua]%s[/color]" % s
-		ANGRY: return "[color=red]%s[/color]" % s
+		Emotion.HAPPY: return "[color=yellow]%s[/color]" % s
+		Emotion.SAD: return "[color=aqua]%s[/color]" % s
+		Emotion.ANGRY: return "[color=red]%s[/color]" % s
 		_: return s
 
 "Mary: [i;|mood mary]What I'm saying will be colored based on my mood.[]"
