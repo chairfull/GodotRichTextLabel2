@@ -539,7 +539,7 @@ func replace_context(string: String) -> String:
 	
 	# {} pattern
 	string = _replace(string, r"\{.*?\}", func(strings):
-		var exp = strings[0]
+		var exp: String = strings[0]
 		return _get_expression_nice(exp, unwrap(exp, "{}")))
 	
 	return string
@@ -611,7 +611,7 @@ func _parse_tags(tags_string: String):
 			_stack_pop()
 			added_stack = false
 		
-		# Close all.
+		# Close everything.
 		elif tag == "/":
 			if added_stack and len(_stack) and not len(_stack[-1]):
 				_stack.pop_back()
@@ -633,14 +633,46 @@ func _parse_tags(tags_string: String):
 	if added_stack and len(_stack) and not len(_stack[-1]):
 		_stack.pop_back()
 
-func get_expression(ex: String):
-	_expression_error = OK
+func get_expression(ex: String, state2 := {}):
 	var node := get_node(context_path)
+	
+	# If a pipe is present.
+	if "|" in ex:
+		# Get all pipes.
+		var pipes := ex.split("|")
+		var ex_prepipe := pipes[0]
+		# Get initial value of expression.
+		var got: Variant = get_expression(ex_prepipe)
+		for i in range(1, len(pipes)):
+			var pipe_parts := pipes[i].split(" ")
+			# First arg is pipe method name.
+			var pipe_meth := pipe_parts[0]
+			# Rest are arguments. Convert to an array.
+			# Does method exist in context node?
+			if node and node.has_method(pipe_meth):
+				var arg_str := "[%s]" % [", ".join(pipe_parts.slice(1))]
+				var pipe_args: Array = [got] + get_expression(arg_str)
+				got = node.callv(pipe_meth, pipe_args)
+			else:
+				var s2 := { "_GOT_": got }
+				var arg_str := []
+				for j in len(pipe_parts)-1:
+					var key := "_ARG%s_" % j
+					s2[key] = get_expression(pipe_parts[j+1])
+					arg_str.append(key)
+				var p_exp := "_GOT_.%s(%s)" % [pipe_meth, ", ".join(arg_str)]
+				got = get_expression(p_exp, s2)
+		return got
+	
+	_expression_error = OK
 	var e := Expression.new()
 	var returned: Variant = null
 	var con_args := context_state.keys() if context_state else []
 	var con_vals := context_state.values() if context_state else []
-	
+	if state2:
+		con_args = con_args + state2.keys()
+		con_vals = con_vals + state2.values()
+		
 	_expression_error = e.parse(ex, con_args)
 	if _expression_error == OK:
 		returned = e.execute(con_vals, node, false)
@@ -815,25 +847,14 @@ func _parse_tag_unused(tag: String, _info: String, _raw: String) -> bool:
 		return true
 	return false
 
-func _preprocess_pipe(s: String) -> String:
-	var i := s.rfind("|")
-	if i != -1:
-		var input := s.substr(0, i)
-		var pipe = s.substr(i+1)
-		var args = Array(pipe.split(" "))
-		var method = args.pop_front()
-		args = args.map(func(x: String): return var_to_str(str_to_var(x)))
-		args.push_front(_preprocess_pipe(input))
-		return "%s(%s)" % [method, ", ".join(args)]
-	return s
-
 func _add_text(t: String):
-	t = t.replace("[[", "[")
-	if len(_state.pipes):
-		var piped := t
-		for pipe in _state.pipes:
-			t += "|" + pipe
-		var eval := _preprocess_pipe(t)
+	if _state.pipes:
+		var exp := "|".join([var_to_str(t)] + _state.pipes)
+		var got = get_expression(exp)
+		t = str(got)
+		append_text(t)
+		return
+		
 	add_text(t)
 
 func _push_meta(data: Variant):

@@ -92,8 +92,64 @@ Emojis sometimes lag on some computers, which I get around by creating a custom 
 
 If an emoji tag is used `:smile:` or `[:smile:]` an `emoji_font` metadata key will be created with the font.
 
+# Pipes
+Pipes pass strings to functions with a `|`.
+
+There are two ways to use them.
+- Inside expressions `{$score+2|pipe}`
+- Or as a tag `[|pipe]Text to be passed.[]`
+
+```gd
+These are both doing the same thing.
+"We'll visit {location|capitalize} tomorrow."
+"We'll visit {location.capitalize()} tomorrow."
+```
+
+Arguments can also be passed as a space seperated list:
+```gd
+# Both these work the same.
+"Day of week: {time.day_of_week|substr 0 3}"
+"Day of week: {time.day_of_week.substr(0, 3)}"
+```
+
+The real power is in adding your own. Pipes first look for a method inside the context node.
+```gd
+# It first looks for methods in the context object.
+func cap(x):
+	return x.capitalize()
+
+func oooify(x):
+	return s.replace("o", "ooo").replace("O", "OOO")
+
+# Location name gets capitalized, and all it's O's stretched out.
+"We'll visit {location|cap|ooify}."
+
+# Pipes can be used in BBCode.
+[|ooify]Wow those cows were mooing.[]
+```
+
+Or maybe you want to stylize content based on the characters mood.
+```gd
+func mood(s: String, npc_id: String):
+	match npcs[npc_id].emotion:
+		HAPPY: return "[color=yellow]%s[/color]" % s
+		SAD: return "[color=aqua]%s[/color]" % s
+		ANGRY: return "[color=red]%s[/color]" % s
+		_: return s
+
+"Mary: [i;|mood mary]What I'm saying will be colored based on my mood.[]"
+"John: [i;|mood john]What I'm saying will be colored based on my mood.[]"
+```
+
+> ![NOTE]
+> The BBCode `[|pipe]` tag function must return old fashioned BBCode. 
+> It doesn't support the labels features like Markdown replacement.
+> Eventually I'll fix that.
+
+
 # Changes
 - 1.2
+	- Added pipes `|`. See README.
 	- Added auto styling of decimal numbers:
 		- `autostyle_numbers_pad_decimals` Enable?
 		- `autostyle_numbers_decimals` Number of decimals.
