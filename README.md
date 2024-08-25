@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 - Integer tags for absolute font size, float tags are relative font_size: `[32]Big text[] and [0.5]half text.[]`
 - Auto emojis: `I'm :smile: with results. You get a :+1:.`
 - Effects automatically installed when you use them: `We on the [sin]sinewave[] vibe.`
-	- 15 premade effects. (Some unstable/untested.)
+	- Many premade effects. See Tags section below.
 - Context strings: `Only $coins coins, $player.name? Travel to $location.get_name("west") for more coins.`
 	- Can call functions or get nested properties.
 	- Niceifys integers with commas. `1234 -> 1,234`
@@ -40,38 +40,68 @@ https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 - Many more I can't rememember... there are a lot of features.
 
 > [!NOTE]
-> A small cache of font paths are stored in meta_data.
-> If font's aren't showing up in the dropdown, clear this meta_data.
-
-Fonts will be discovered wherever they are.
+> If fonts aren't showing up in the font drop down, clear `font_cache`.
+> The entire project is scanned for fonts to display in the dropdown.
 
 ![](README/readme1.png)
 ![](README/readme2.png)
 
 # Tags
 
-|Tag|Description|
-|---|-----------|
-|dim|           |
-|lit|           |
-|hue|           |
+|Tag|Description|Example|
+|:-:|-----------|:--:|
+|`dim`|Dims color by 33%.||
+|`lit`|Lightens color by 33%.|
+|`hue`|Shifts hue. 0 or 1 = no change. 0.5 = opposite end of spectrum.|`[hue 0.25]`|
+|`beat`|Pulses in size and color.||
+|`curspull`|Pulls towards cursor.|`[curspull pull=-1]`|
+|`cuss`|Animation to replace vowels with symbols.|`What the [cuss]heck[].`|
+|`heart`|Animated love bounce. Demonstrates changing font and using emojis.||
+|`jit`|||
+|`jit2`|Jittering nervous animation.||
+|`jump`|||
+|`jump2`|||
+|`l33t`|Animation to replace letters with numbers.||
+|`off`|Ignore. Offsets.||
+|`rain`|Simulates rain. What for? I don't know.||
+|`secret`|Hidden unless mouse cursor is nearbye.||
+|`sin`|Might not work as sin is now built in?||
+|`sparkle`|Animation to sparkle character colors. Meant to be used with color tags.||
+|`sway`|Just skews back and forth.||
+|`uwu`|Converts all R's and L's to W's.||
+|`wack`|Randomly animates rotation and scale for a wacky look.||
+|`woo`|Animates between upper and lower case, creating a sarcastic tone.||
 
 # RichTextAnimation
 
 This node is meant for dialogue systems and cinematics.
 
-
-
 ## Animation Tags
 
 |Tag|Description|Arguments|Example|Self Closing|
-|---|-----------|---------|-------|------------|
+|:-:|-----------|---------|:-----:|:----------:|
 |`wait` or `w`|Waits a second.|Number of seconds.|`Wait...[w=2] Did you hear...[w] *bang*`|✅|
 |`hold` or `h`|Holds until `advance()` is called.|`[h]`||✅|
 |`pace` or `p`|Sets animation speed.|Scale.|`[p=2.0]Fast talker.[p=0.2]Slow talker.[p]Normal speed.`|✅|
 |`skip`|Skips animation across selected items.||`They call it [skip]The Neverending Forest[].`|❌|
 |`$`|Runs an expression at this spot in the animation.|Expression.|`Did you hear something...[~play_sound("gurgle")]`|✅|
 |`#`|Calls `on_bookmark.emit()` with the id when reached.|Bookmark id.|`He told me [#quote]the haunted forest[#endquote] wasn't so haunted.[#end]`|✅|
+
+## Animations
+
+|Tag|Description|Arguments|
+|:-:|-----------|---------|
+|`back`|Characters bounce back in.||
+|`console`|(Broken) Simulates a computer console.||
+|`fader`|Characters alpha fades in.||
+|`fallin`|Characters are scaled down from a large size.||
+|`focus`|Characters slide in from all random directions.||
+|`fromcursor`|Characters slide in from cursor position.||
+|`growin`|Characters scale up from tiny.||
+|`offin`|Characters slide in from a slight offset to the left.||
+|`prickle`|Character alpha fades in but with a random offset. Requires a low `fade_in_speed` to look right.||
+|`redact`|(Broken) Simulates redacted text being exposed.||
+|`wfc`| Characters start out as random 0's and 1's and eventually "collapse".||
 
 If `shortcut_expression = true` you can use the `<code expression>` pattern instead of the `[!code expression]` pattern.
 ```
@@ -88,26 +118,24 @@ He told me[#quote] the haunted forest[#endquote] wasn't so haunted.[#end]
 # Emoji Fonts
 If a font has "emoji" (any case) in it's name, it will be used for emojis instead of the default font.
 
-Emojis sometimes lag on some computers, which I get around by creating a custom FontVariant that uses the emoji font as a base and `ThemeDB.fallback_font` as a fallback font. This seems to prevent spikes.
+Emojis sometimes lag on some computers, which I get around by creating a custom FontVariant that uses the emoji font as a base and `ThemeDB.fallback_font` as a fallback font. This seems to prevent lag spikes.
 
 If an emoji tag is used `:smile:` or `[:smile:]` an `emoji_font` metadata key will be created with the font.
 
 # Pipes
-Pipes pass strings to functions with a `|`.
+Pipes `|` post process strings.
 
 There are two ways to use them.
 - Inside expressions `{$score+2|pipe}`
 - Or as a tag `[|pipe]Text to be passed.[]`
 
 ```gd
-These are all doing the same thing.
+# These are all doing the same thing.
 "We'll visit {location|capitalize} tomorrow."
 "We'll visit {location.capitalize()} tomorrow."
 "We'll visit [|capitalize]$location[] tomorrow."
-```
 
-Arguments can also be passed as a space seperated list:
-```gd
+# Arguments can also be passed as a space seperated list:
 # These are all the same.
 "Day of week: {time.day_of_week|substr 0 3}"
 "Day of week: {time.day_of_week.substr(0, 3)}"
@@ -116,20 +144,20 @@ Arguments can also be passed as a space seperated list:
 
 The real power is in adding your own. Pipes try to use a method inside the context node.
 ```gd
-# It first looks for methods in the context object.
 func cap(x):
 	return x.capitalize()
 
 func oooify(x):
 	if cow_mode == CowMode.ACTIVATED:
-		return x.replace("o", "ooo").replace("O", "OOO")
+		return x.replace("o", "[sin]ooo[/sin]").replace("O", "[sin]OOO[/sin]")
 	else:
 		return x
 
+# Pipes can be chained.
 # Location name gets capitalized, and all it's O's stretched out.
 "We'll visit {location|cap|ooify}."
 
-# Or we may want to change entire dialogue based on state data.
+# Or we may want to change entire the dialogue based on state data.
 [|ooify]Wow those cows were mooing.[]
 ```
 
@@ -147,7 +175,7 @@ func mood(s: String, npc_id: String):
 "John: [i;|mood john]What I'm saying will be colored based on my mood.[]"
 ```
 
-> ![NOTE]
+> [!NOTE]
 > The BBCode `[|pipe]` tag function must return old fashioned BBCode. 
 > It doesn't support the labels features like Markdown replacement.
 > Eventually I'll fix that.
