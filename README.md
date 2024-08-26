@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.2` [Demo](https://github.com/chairfull/GodotRichTextLabelDemo)
+`v1.3` [Demo](https://github.com/chairfull/GodotRichTextLabelDemo)
 
 Two Nodes:
 - `RichTextLabel2`: Reduce effort needed to display state data and stylize it.
@@ -182,6 +182,9 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.3
+	- `override_fitContent` forces `custom_minimum_size` to the content size.
+	- Changed: Objects can implement `to_rich_string()` instead of `to_string_nice()`.
 - 1.2
 	- Added pipes `|`. See README.
 	- Added auto styling of decimal numbers:

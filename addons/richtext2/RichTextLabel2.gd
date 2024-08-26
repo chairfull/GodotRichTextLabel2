@@ -226,7 +226,7 @@ func _update_theme_shadow():
 @export var context_path: NodePath = "/root/State"
 ## Extra parameters that can be accessed in context.
 @export_storage var context_state := {}
-## Will attempt to call `to_string_nice()` on objects. Otherwise `.to_string()` is used.
+## Will attempt to call `to_rich_string()` on objects. Otherwise `.to_string()` is used.
 @export var context_nice_objects := true
 ## Will automatically add commas to integers: 1234 -> 1,234
 @export var context_nice_ints := true
@@ -244,12 +244,6 @@ func _update_theme_shadow():
 @export var autostyle_numbers_decimals := 2
 ## Automatically detects :smile: emojis.
 @export var autostyle_emojis := true
-
-## WARNING: Expieremental.
-@export var width_from_content := false:
-	set(w):
-		width_from_content = w
-		_redraw()
 
 @export_group("Overrides", "override_")
 ## Override so bbcode_enabled = true at init.
@@ -346,8 +340,11 @@ func set_bbcode(btext: String):
 	## HACK: Deferred so it outraces the set_text function.
 	_set_bbcode.call_deferred()
 	
-	if width_from_content:
-		set_width_from_content.call_deferred()
+	if override_fitContent:
+		await finished
+		if get_tree():
+			await get_tree().process_frame
+		custom_minimum_size.y = get_content_height()
 	
 func _set_bbcode():
 	clear()
@@ -379,9 +376,6 @@ func _set_bbcode():
 	_random = []
 	for i in get_total_character_count():
 		_random.append(randi())
-
-func set_width_from_content():
-	custom_minimum_size.x = get_normal_font().get_string_size(get_parsed_text(), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size).x
 
 func _resize_to_content():
 	autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -551,15 +545,15 @@ func _get_expression_nice(exp: String, exp_clean: String) -> String:
 	else:
 		if typeof(value) == TYPE_INT and context_nice_ints:
 			return commas(value)
-		elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_string_nice"):
-			return value.to_string_nice()
+		elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_rich_string"):
+			return value.to_rich_string()
 		elif typeof(value) == TYPE_ARRAY and context_nice_array:
 			var nice_array := []
 			for item in value:
 				match typeof(item):
 					TYPE_OBJECT:
-						if item.has_method(&"to_string_nice"):
-							nice_array.append(item.to_string_nice())
+						if item.has_method(&"to_rich_string"):
+							nice_array.append(item.to_rich_string())
 						elif "name" in item:
 							nice_array.append(item.name)
 						else:
