@@ -10,5 +10,5 @@ func _process_custom_fx(c: CharFXTransform):
 	# Send position back early so ctc isn't weird.
 	send_back_transform(c)
 	c.color.a *= delta
-	c.transform.origin = get_mouse_pos().lerp(c.transform.origin, pow(delta, 0.25))
+	c.transform.origin = get_mouse_pos(c).lerp(c.transform.origin, pow(delta, 0.25))
 	return true

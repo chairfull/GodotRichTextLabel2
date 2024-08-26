@@ -2,7 +2,7 @@
 extends RichTextEffect
 class_name RichTextEffectBase
 
-var label: RichTextLabel2
+var label: RicherTextLabel
 const c1 := 1.70158
 const c3 := c1 + .5
 
@@ -34,14 +34,21 @@ func get_label() -> RichTextLabel:
 		label = instance_from_id(get_meta("rt"))
 	return label
 
-func get_label2() -> RichTextLabel2:
+func get_label2() -> RicherTextLabel:
 	return get_label()
 
 func get_label_animated() -> RichTextAnimation:
 	return get_label()
 
-func get_mouse_pos() -> Vector2:
-	return get_label_animated()._mouse_position
+func get_mouse_pos(c: CharFXTransform) -> Vector2:
+	var lb := get_label()
+	var frame := lb.get_tree().get_frame()
+	if frame != lb.get_meta("frame", 0):
+		var mp := lb.get_local_mouse_position()
+		lb.set_meta("mouse_position", mp)
+		lb.set_meta("frame", frame)
+		return mp
+	return lb.get_meta("mouse_position")#get_label2()._mouse_position
 
 func get_text() -> String:
 	return get_label().get_parsed_text()

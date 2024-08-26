@@ -6,7 +6,7 @@ extends RichTextEffectBase
 const bbcode = "secret"
 
 func _process_custom_fx(c: CharFXTransform):
-	var dif := c.transform.origin - get_label().get_local_mouse_position()
+	var dif := c.transform.origin - get_mouse_pos(c)
 	var dis := dif.length()
 	c.color.a = clampf(8.0 - (dis / 8.0), 0.0, 1.0)
 	return true

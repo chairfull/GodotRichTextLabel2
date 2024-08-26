@@ -1,5 +1,5 @@
 @tool
-extends RichTextLabel2
+extends RicherTextLabel
 class_name RichTextAnimation
 
 ## A symbols [#symbol] tag was triggered at a point in the animation.
@@ -26,7 +26,7 @@ signal hold_started()
 signal hold_finished()
 
 enum {
-	TRIG_NONE = 1000, # Offset because it's built on the enum of the RichTextLabel2 class.
+	TRIG_NONE = 1000, # Offset because it's built on the enum of the RicherTextLabel class.
 	TRIG_WAIT,	## [wait] or [w]: Delays animation for a time.
 	TRIG_PACE,	## [pace] or [p]: Changes the animation speed.
 	TRIG_HOLD,	## [hold] or [h]: Hold until player pressed advance.
@@ -125,9 +125,6 @@ var ctc_tween: Tween
 ## Will signal when *stars* have started and finished.
 ## Usefulf for triggering sounds or animations.
 @export var signal_stars := true
-
-## We need to cache local_mouse_position as it is slow to call repeatedly.
-var _mouse_position: Vector2
 
 func _set_bbcode():
 	_triggers.clear()
@@ -406,8 +403,6 @@ func _update_ctc_position():
 func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() and _play:
 		effect_time += delta
-	
-	_mouse_position = get_local_mouse_position()
 	
 	if len(_alpha) != get_total_character_count():
 		return

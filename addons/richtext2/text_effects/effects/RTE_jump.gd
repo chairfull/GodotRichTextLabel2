@@ -10,7 +10,7 @@ var _w_char = 0
 var _last = 999
 
 func _process_custom_fx(c:CharFXTransform):
-	var t: RichTextLabel2 = instance_from_id(get_meta("rt"))
+	var t: RicherTextLabel = instance_from_id(get_meta("rt"))
 	
 	if c.absolute_index < _last or c.character in SPLITTERS:
 		_w_char = c.absolute_index

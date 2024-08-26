@@ -1,6 +1,6 @@
 @tool
 extends RichTextLabel
-class_name RichTextLabel2
+class_name RicherTextLabel
 
 const DIR_TEXT_EFFECTS := "res://addons/richtext2/text_effects/effects"
 const DIR_TEXT_TRANSITIONS := "res://addons/richtext2/text_effects/anims"
@@ -270,10 +270,26 @@ var _meta := {}
 var _meta_hovered: Variant = null
 var _expression_error := OK
 @export_storage var _random: Array[int] ## Used in the effects as a random offset.
+### We need to cache local_mouse_position as it is slow to call repeatedly.
+#var _mouse_position: Vector2
 
 func _init():
 	if not Engine.is_editor_hint():
 		_connect_meta()
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_EDITOR_PRE_SAVE:
+			if font_auto_setup:
+				# Clear auto fonts so they aren't saved to disk.
+				remove_theme_font_override("bold_font")
+				remove_theme_font_override("bold_italics_font")
+				remove_theme_font_override("italics_font")
+				remove_theme_font_override("normal_font")
+		
+		NOTIFICATION_EDITOR_POST_SAVE:
+			if font_auto_setup:
+				_update_subfonts()
 
 func _connect_meta():
 	meta_hover_started.connect(_meta_hover_started)
@@ -392,8 +408,7 @@ func set_font(id: String):
 
 func _update_subfonts():
 	if font_auto_setup:
-		if Engine.is_editor_hint():
-			FontHelper.set_fonts(self, font, font_bold_weight, font_italics_slant, font_italics_weight)
+		FontHelper.set_fonts(self, font, font_bold_weight, font_italics_slant, font_italics_weight)
 
 func get_normal_font() -> Font:
 	return get_theme_font("normal_font")

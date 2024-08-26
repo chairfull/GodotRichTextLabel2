@@ -182,9 +182,12 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
-- 1.3
-	- `override_fitContent` forces `custom_minimum_size` to the content size.
+- 1.3 *BREAKING CHANGES*
+	- Changed: Class name `RicherTextLabel` from `RichTextLabel2` to prevent future problems.
 	- Changed: Objects can implement `to_rich_string()` instead of `to_string_nice()`.
+	- Fixed scene sizes being massive by preventing auto fonts saving to disk.
+	- Fixed `fit_content` not working. Now `override_fitContent` really forces `custom_minimum_size`.
+	- Fixed cursor based effects being very laggy.
 - 1.2
 	- Added pipes `|`. See README.
 	- Added auto styling of decimal numbers:
