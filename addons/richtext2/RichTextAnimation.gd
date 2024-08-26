@@ -126,12 +126,17 @@ var ctc_tween: Tween
 ## Usefulf for triggering sounds or animations.
 @export var signal_stars := true
 
+const FORCED_FINISH_DELAY := 0.1
+@export_storage var _forced_finish := false
+@export_storage var _forced_finish_delay := FORCED_FINISH_DELAY
+
 func _set_bbcode():
 	_triggers.clear()
 	_skip = false
 	_wait = 0.0
 	_wait_max = 0.0
 	_pace = 1.0
+	_forced_finish = false
 	progress = 0.0
 	effect_time = 0.0
 	visible_character = -1
@@ -174,10 +179,9 @@ func is_holding() -> bool:
 	return not _play and not is_finished()
 
 ## User should call this to advance the animation if it is paused.
-func advance():
-	if is_finished():
-		return
-	elif is_waiting():
+## Returns true if still playing.
+func advance() -> bool:
+	if is_waiting():
 		_wait = 0.0
 		_wait_max = 0.0
 		wait_finished.emit()
@@ -185,20 +189,38 @@ func advance():
 			_hold = false
 			hold_finished.emit()
 		_continued()
+		return true
 	elif is_holding():
 		_play = true
 		_hold = false
 		hold_finished.emit()
 		_continued()
+		return true
 	else:
 		# Check if there are more triggers ahead.
 		for i in range(visible_character+1, get_total_character_count()):
 			if i in _triggers:
-				# Fast forward to next trigger.
-				progress += i / float(get_total_character_count())
-				return
-		# Otherwise we are finished.
+				for trig in _triggers[i]:
+					# Check if there is a trigger that will pause.
+					if trig[0] in [TRIG_WAIT, TRIG_HOLD]:
+						# Fast forward to next trigger.
+						_jumpto(i)
+						return true
+	
+	# Otherwise we will force finished.
+	if not is_finished():
+		_forced_finish = true
+		_forced_finish_delay = FORCED_FINISH_DELAY
 		finish()
+		return true
+	
+	if _forced_finish_delay > 0.0:
+		return true
+	
+	return false
+
+func _jumpto(to: int):
+	progress = float(to) / float(len(_alpha))
 
 func _paused():
 	anim_paused.emit()
@@ -227,17 +249,11 @@ func _hide_ctc():
 		ctc_tween.tween_property(ctc_node, "modulate:a", 0.0, 0.01)
 
 func finish():
+	set_progress(1.0)
 	_triggers.clear()
 	_wait = 0.0
 	_wait_max = 0.0
-	set_progress(1.0)
 	_alpha.fill(1.0)
-	_alpha_goal.fill(1.0)
-	if ctc_on_finished:
-		_show_ctc()
-	else:
-		_hide_ctc()
-	finished.emit()
 
 func _preparse(btext: String) -> String:
 	if signal_quotes:
@@ -337,7 +353,7 @@ func _register_trigger(type: int, data = null) -> bool:
 	
 	return true
 
-func set_progress(p:float):
+func set_progress(p: float):
 	var last_progress := progress
 	var last_visible_character := visible_character
 	
@@ -352,19 +368,18 @@ func set_progress(p:float):
 		for i in range(last_visible_character, next_visible_character):
 			
 			if i in _triggers:
-				for t in _triggers[i]:
-					if _wait > 0.0:
-						var timer := get_tree().create_timer(_wait)
-						timer.timeout.connect(_trigger.bind(t[0], t[1]))
-					else:
+				if not is_waiting():
+					for t in _triggers[i]:
 						_trigger(t[0], t[1])
 				
-				if is_waiting():
+				# Break at next trigger, unless being forced.
+				if is_waiting() and not _forced_finish:
 					next_progress = (i+1) / float(len(_alpha))
 					next_visible_character = (i+1)
 					break
 			
-			if is_waiting():
+			# Breaking on trigger, unless being forced.
+			if is_waiting() and not _forced_finish:
 				break
 	
 	progress = next_progress
@@ -372,7 +387,7 @@ func set_progress(p:float):
 	
 	# Set alpha goal.
 	for i in len(_alpha_goal):
-		_alpha_goal[i] = 1.0 if i < visible_character else 0.0
+		_alpha_goal[i] = 1.0 if i <= visible_character else 0.0
 	
 	# Emit signals.
 	if last_visible_character < visible_character:
@@ -381,8 +396,6 @@ func set_progress(p:float):
 		
 		for i in range(last_visible_character, visible_character):
 			on_character.emit(i)
-		
-		_update_ctc_position()
 		
 		if visible_character == get_total_character_count():
 			anim_finished.emit()
@@ -394,15 +407,27 @@ func set_progress(p:float):
 	else:
 		if progress == 1.0:
 			finish()
+	
+	_update_ctc_position()
 
 func _update_ctc_position():
-	var index := visible_character - 1
-	if ctc_node and get_parsed_text()[index] != " ":
+	if not ctc_node:
+		return
+	
+	var index  = visible_character
+	while index > 0 and index < len(_char_size) and _char_size[index] == Vector2.ZERO:
+		index -= 1
+	index = clampi(index, 0, len(_char_size)-1)
+	
+	if _char_size[index] != Vector2.ZERO:
 		ctc_node.position = _transforms[index].origin + _char_size[index] * ctc_offset
 
 func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() and _play:
 		effect_time += delta
+	
+	if _forced_finish_delay > 0.0:
+		_forced_finish_delay -= delta
 	
 	if len(_alpha) != get_total_character_count():
 		return
@@ -418,9 +443,6 @@ func _process(delta: float) -> void:
 	else:
 		var fs := delta * fade_in_speed
 		
-#		if _advance_finished:
-#			fs *= 4.0
-		
 		for i in len(_alpha):
 			if _alpha[i] > _alpha_goal[i]:
 				_alpha[i] = maxf(_alpha_goal[i], _alpha[i] - fs)
@@ -429,8 +451,9 @@ func _process(delta: float) -> void:
 				_alpha[i] = minf(_alpha_goal[i], _alpha[i] + fs)
 		
 		if _wait > 0.0:
-			_wait = maxf(0.0, _wait - delta)
-			if _wait == 0.0:
+			_wait -= delta
+			if _wait <= 0.0:
+				_jumpto(visible_character+1) # TODO: Look into why this is needed now?
 				wait_finished.emit()
 				_continued()
 		
@@ -438,9 +461,6 @@ func _process(delta: float) -> void:
 			if _skip:
 				while _skip:
 					progress += 1.0 / float(len(_alpha))
-				
-#				for i in get_total_character_count():
-#					_alpha_real[i] = _alpha_goal[i]
 			else:
 				var t := 1.0 / float(len(_alpha))
 				progress += delta * t * play_speed * _pace

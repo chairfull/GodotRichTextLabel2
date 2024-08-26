@@ -23,7 +23,7 @@ https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 - Context strings: `Only $coins coins, $player.name? Travel to $location.get_name("west") for more coins.`
 	- Can call functions or get nested properties.
 	- Niceifys integers with commas. `1234 -> 1,234`
-	- Niceifys objects by calling `to_string_nice()` if it can.
+	- Niceifys objects by calling `to_rich_string()` if it can.
 	- Niceifys arrays by joining them into a comma seperated list.
 - Easy font selection dropdown detects all fonts in the project.
 	- Automatically creates Bold, Italic, and Bold Italic font variations if they don't exist.
@@ -182,12 +182,17 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
-- 1.3 *BREAKING CHANGES*
-	- Changed: Class name `RicherTextLabel` from `RichTextLabel2` to prevent future problems.
-	- Changed: Objects can implement `to_rich_string()` instead of `to_string_nice()`.
+- 1.3 **BREAKING CHANGES**
+	- Change: Class name `RicherTextLabel` from `RichTextLabel2` to prevent future problems.
+	- Change: Objects can implement `to_rich_string()` instead of `to_string_nice()`.
+	- `advance()` only skips to next `[wait]` or `[hold]` instead of all triggers.
+	- `advance()` returns true if still playing.
+	- Added tiny wait timer when forcing a finish, so the user doesn't accidentally skip text.
 	- Fixed scene sizes being massive by preventing auto fonts saving to disk.
 	- Fixed `fit_content` not working. Now `override_fitContent` really forces `custom_minimum_size`.
 	- Fixed cursor based effects being very laggy.
+	- Fixed ctc_position handling on new lines.
+	- Fixed animations jumping when nearly finished.
 - 1.2
 	- Added pipes `|`. See README.
 	- Added auto styling of decimal numbers:
