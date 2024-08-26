@@ -358,7 +358,7 @@ func set_bbcode(btext: String):
 	
 	if override_fitContent:
 		await finished
-		if get_tree():
+		if is_inside_tree():
 			await get_tree().process_frame
 		custom_minimum_size.y = get_content_height()
 	
