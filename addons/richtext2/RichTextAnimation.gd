@@ -202,9 +202,9 @@ func advance() -> bool:
 			if i in _triggers:
 				for trig in _triggers[i]:
 					# Check if there is a trigger that will pause.
-					if trig[0] in [TRIG_WAIT, TRIG_HOLD]:
+					if trig[0] in [TRIG_WAIT, TRIG_HOLD, TRIG_EXPRESSION]:
 						# Fast forward to next trigger.
-						_jumpto(i)
+						_jumpto(i+1.)
 						return true
 	
 	# Otherwise we will force finished.

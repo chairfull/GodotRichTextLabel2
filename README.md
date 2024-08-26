@@ -185,7 +185,7 @@ func mood(s: String, npc_id: String):
 - 1.3 **BREAKING CHANGES**
 	- Change: Class name `RicherTextLabel` from `RichTextLabel2` to prevent future problems.
 	- Change: Objects can implement `to_rich_string()` instead of `to_string_nice()`.
-	- `advance()` only skips to next `[wait]` or `[hold]` instead of all triggers.
+	- `advance()` only skips to next `[wait]` `[hold]` or `[$expression] instead of all triggers.
 	- `advance()` returns true if still playing.
 	- Added tiny wait timer when forcing a finish, so the user doesn't accidentally skip text.
 	- Fixed scene sizes being massive by preventing auto fonts saving to disk.
