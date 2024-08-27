@@ -351,6 +351,10 @@ func _redraw():
 	set_bbcode(bbcode)
 
 func set_bbcode(btext: String):
+	# When not in editor, don't keep updating.
+	if not Engine.is_editor_hint() and bbcode == btext:
+		return
+	
 	bbcode = btext
 	text = ""
 	## HACK: Deferred so it outraces the set_text function.

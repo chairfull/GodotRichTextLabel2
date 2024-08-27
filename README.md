@@ -193,6 +193,7 @@ func mood(s: String, npc_id: String):
 	- Fixed cursor based effects being very laggy.
 	- Fixed ctc_position handling on new lines.
 	- Fixed animations jumping when nearly finished.
+	- Fixed `set_bbcode` being called many times in a row.
 - 1.2
 	- Added pipes `|`. See README.
 	- Added auto styling of decimal numbers:
