@@ -1,6 +1,6 @@
 @tool
-extends RicherTextLabel
 class_name RichTextAnimation
+extends RicherTextLabel
 
 ## A symbols [#symbol] tag was triggered at a point in the animation.
 signal on_bookmark(symbol: String)
@@ -58,18 +58,18 @@ enum Style {
 @export_storage var _hold := false
 ## Automatically play when bbcode is set.
 ## Otherwise you need to call advance().
-@export var play_on_bbcode := true
+var play_on_bbcode := true
 ## Default speed of the animation.
-@export var play_speed := 30.0
+var play_speed := 30.0
 ## Enabled when transitioning out.
 ## Triggers will be disabled.
-@export var fade_out := false
+var fade_out := false
 ## How quickly characters fade in.
 ## Longer is whispier. Slower is sharper.
-@export var fade_in_speed := 10.0
+var fade_in_speed := 10.0
 ## How quickly characters fade out when fade_out = true.
 ## This should be very fast so the user isn't bored.
-@export var fade_out_speed := 120.0
+var fade_out_speed := 120.0
 ## Current state of animation. Manually tweaking is meant for in editor, otherwise you should be calling advance().
 @export_range(0.0, 1.0) var progress := 0.0: set=set_progress
 ## Current character that is fully visible.
@@ -81,7 +81,7 @@ var effect_time := 0.0
 @export_storage var _wait := 0.0
 @export_storage var _wait_max := 0.0
 ## How long to wait when [w] is called.
-@export var default_wait_time := 1.0
+var default_wait_time := 1.0
 ## How fast to display characters. Multiplied by play_speed.
 @export_storage var _pace := 1.0
 @export_storage var _skip := false
@@ -97,34 +97,31 @@ var effect_time := 0.0
 ## Goal alpha value of a character.
 @export_storage var _alpha_goal: Array[float] = []
 
-@export_group("Click2Continue", "ctc_")
 ## Node displayed at end of text when waiting for user input.
-@export var ctc_node: CanvasItem
+var ctc_node: CanvasItem
 ## By default, ctc_node will be positioned at end of final character, half way up.
-@export var ctc_offset := Vector2(1.0, -0.5):
+var ctc_offset := Vector2(1.0, -0.5):
 	set(p):
 		ctc_offset = p
 		_update_ctc_position()
 ## Show the ctc when finished?
-@export var ctc_on_finished := false
+var ctc_on_finished := false
 ## Show the ctc when waiting?
-@export var ctc_on_wait := false
+var ctc_on_wait := false
 @export_storage var _showing_ctc := false
 var ctc_tween: Tween
 
-@export_group("Shortcuts", "shortcut_")
 ## Allow using <expression> pattern instead of just [$expression].
-@export var shortcut_expression := true
+var shortcut_expression := true
 ## Allow using #bookmark pattern instead of just [#bookmark].
-@export var shortcut_bookmark := true
+var shortcut_bookmark := true
 
-@export_group("Signal", "signal_")
 ## Will signal when "quotes" have started and finished.
 ## Useful for triggering sounds or animations.
-@export var signal_quotes := true
+var signal_quotes := true
 ## Will signal when *stars* have started and finished.
 ## Usefulf for triggering sounds or animations.
-@export var signal_stars := true
+var signal_stars := true
 
 const FORCED_FINISH_DELAY := 0.1
 @export_storage var _forced_finish := false
@@ -472,7 +469,33 @@ func _get_character_alpha(index:int) -> float:
 
 func _get_property_list() -> Array[Dictionary]:
 	var animations: Array[String]
+	var t := Time.get_ticks_msec()
 	for file in DirAccess.get_files_at(DIR_TEXT_TRANSITIONS):
-		if file.begins_with("RTE_") and file.ends_with(".gd"):
-			animations.append(file.get_basename().trim_prefix("RTE_"))
-	return [{name="animation", type=TYPE_STRING, hint=PROPERTY_HINT_ENUM, hint_string=",".join(animations)}]
+		if file.begins_with("rte_") and file.ends_with(".gd"):
+			animations.append(file.get_basename().trim_prefix("rte_"))
+	var props: Array[Dictionary]
+	_prop(props, "animation", TYPE_STRING, PROPERTY_HINT_ENUM, ",".join(animations))
+	
+	_prop(props, "default_wait_time", TYPE_FLOAT)
+	
+	_prop(props, "play_on_bbcode", TYPE_BOOL)
+	_prop(props, "play_speed", TYPE_FLOAT)
+	_prop(props, "fade_out", TYPE_BOOL)
+	_prop(props, "fade_in_speed", TYPE_FLOAT)
+	_prop(props, "fade_out_speed", TYPE_FLOAT)
+	
+	_prop_group(props, "Click 2 Continue", "ctc_")
+	_prop_node(props, "ctc_node", "CanvasItem")
+	_prop(props, "ctc_offset", TYPE_VECTOR2)
+	_prop(props, "ctc_on_finished", TYPE_BOOL)
+	_prop(props, "ctc_on_wait", TYPE_BOOL)
+	
+	_prop_group(props, "Shortcuts", "shortcut_")
+	_prop(props, "shortcut_expression", TYPE_BOOL)
+	_prop(props, "shortcut_bookmark", TYPE_BOOL)
+	
+	_prop_group(props, "Signal", "signal_")
+	_prop(props, "signal_quotes", TYPE_BOOL)
+	_prop(props, "signal_stars", TYPE_BOOL)
+	
+	return props

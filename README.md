@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.3` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
+`v1.4` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
 
 Two Nodes:
 - `RicherTextLabel`: Reduce effort needed to display state data and stylize it.
@@ -182,6 +182,12 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.4
+	- Changed how bbcode is initialized when not yet inside the tree.
+	- Made node selection slightly faster by moving all `@export` to `_get_property_list`.
+	- Made node selection slightly faster by caching project fonts.
+	- Renamed scripts to lowercase to match Godots prefered style.
+	- Renamed `context_nice_*` properties to `context_rich_*`.
 - 1.3 **BREAKING CHANGES**
 	- Change: Class name `RicherTextLabel` from `RichTextLabel2` to prevent future problems.
 	- Change: Objects can implement `to_rich_string()` instead of `to_string_nice()`.

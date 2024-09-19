@@ -1,6 +1,11 @@
 @tool
-extends RichTextLabel
 class_name RicherTextLabel
+extends RichTextLabel
+
+signal internal_pressed(variant: Variant)
+signal internal_right_pressed(variant: Variant)
+signal pressed(variant: Variant)
+signal right_pressed(variant: Variant)
 
 const DIR_TEXT_EFFECTS := "res://addons/richtext2/text_effects/effects"
 const DIR_TEXT_TRANSITIONS := "res://addons/richtext2/text_effects/anims"
@@ -18,10 +23,10 @@ enum {
 	T_META, T_HINT,
 	T_FONT,
 	T_FONT_SIZE,
-	T_TABBLE, T_CELL,
+	T_TABLE, T_CELL,
 	T_EFFECT,
 	T_PIPE,
-	T_FLAG_CAP, T_FLAG_UPPER, T_FLAG_LOWER
+	T_FLAG_CAP, T_FLAG_UPPER, T_FLAG_LOWER,
 }
 
 enum Align {
@@ -29,59 +34,128 @@ enum Align {
 	LEFT, ## Autowraps string in "left" tags.
 	CENTER, ## Autowraps string in "center" tags.
 	RIGHT, ## Autowraps string in "right" tags.
-	FILL ## Autowraps string in "fill" tags.
+	FILL, ## Autowraps string in "fill" tags.
 }
 
 enum OutlineStyle {
 	OFF, ## No outline.
 	DARKEN, ## Outline will be darker than font color.
-	LIGHTEN ## Outline will be lighter than font color.
+	LIGHTEN, ## Outline will be lighter than font color.
 }
 enum EffectsMode {
 	OFF, ## Disable text effects.
 	OFF_IN_EDITOR, ## Don't animate effects in edit mode.
-	ON ## Enable text effects.
+	ON, ## Enable text effects.
 }
 
-signal internal_pressed(variant: Variant)
-signal internal_right_pressed(variant: Variant)
-signal pressed(variant: Variant)
-signal right_pressed(variant: Variant)
-
 func _get_property_list():
-	var fonts := "," + ",".join(FontHelper.get_font_paths({}).keys())
-	return [
-		{
-			"name": "Font",
-			"type": TYPE_NIL,
-			"usage": PROPERTY_USAGE_GROUP,
-			"hint_string": "font_"
-		},
-		{
-			"name": "font",
-			"type": TYPE_STRING,
-			"usage": PROPERTY_USAGE_DEFAULT,
-			"hint": PROPERTY_HINT_ENUM_SUGGESTION,
-			"hint_string": fonts
-	}]
+	if not font_cache:
+		_update_font_cache()
+	var fonts := "," + ",".join(font_cache.keys())
+	var props: Array[Dictionary]
+	_prop(props, "bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
+	_prop_enum(props, "effects", EffectsMode)
+	_prop_enum(props, "alignment", Align)
+	_prop(props, "color", TYPE_COLOR)
+	_prop(props, "emoji_scale", TYPE_FLOAT)
+	
+	_prop_group(props, "Font", "font_")
+	_prop(props, "font", TYPE_STRING, PROPERTY_HINT_ENUM_SUGGESTION, fonts)
+	_prop(props, "font_auto_setup", TYPE_BOOL)
+	_prop(props, "font_size", TYPE_INT)
+	_prop(props, "font_bold_weight", TYPE_FLOAT)
+	_prop(props, "font_italics_slant", TYPE_FLOAT)
+	_prop(props, "font_italics_weight", TYPE_FLOAT)
+	_prop(props, "font_cache", TYPE_DICTIONARY)
+	
+	_prop_group(props, "Shadow", "shadow_")
+	_prop(props, "shadow_enabled", TYPE_BOOL)
+	_prop(props, "shadow_offset", TYPE_FLOAT)
+	_prop_range(props, "shadow_alpha")
+	_prop(props, "shadow_outline_size", TYPE_FLOAT)
+	
+	_prop_group(props, "Outline", "outline_")
+	_prop(props, "outline_size", TYPE_INT)
+	_prop_enum(props, "outline_mode", OutlineStyle)
+	_prop_range(props, "outline_adjust")
+	_prop_range(props, "outline_hue_adjust")
+	
+	_prop_group(props, "Nicer Quotes", "nicer_quotes_")
+	_prop(props, "nicer_quotes_enabled", TYPE_BOOL)
+	_prop(props, "nicer_quotes_format", TYPE_STRING)
+	
+	_prop_group(props, "Markdown", "markdown_")
+	_prop(props, "markdown_enabled", TYPE_BOOL)
+	_prop_subgroup(props, "Format", "markdown_format_")
+	_prop(props, "markdown_format_bold", TYPE_STRING)
+	_prop(props, "markdown_format_italics", TYPE_STRING)
+	_prop(props, "markdown_format_bold_italics", TYPE_STRING)
+	_prop(props, "markdown_format_highlight", TYPE_STRING)
+	_prop(props, "markdown_format_bold2", TYPE_STRING)
+	_prop(props, "markdown_format_italics2", TYPE_STRING)
+	_prop(props, "markdown_format_bold_italics2", TYPE_STRING)
+	
+	_prop_group(props, "Context", "context_")
+	_prop(props, "context_enabled", TYPE_BOOL)
+	_prop(props, "context_path", TYPE_NODE_PATH)
+	_prop(props, "context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
+	_prop(props, "context_rich_objects", TYPE_BOOL)
+	_prop(props, "context_rich_ints", TYPE_BOOL)
+	_prop(props, "context_rich_array", TYPE_BOOL)
+	
+	_prop_group(props, "Auto Style", "autostyle_")
+	_prop(props, "autostyle_numbers", TYPE_BOOL)
+	_prop(props, "autostyle_numbers_tag", TYPE_STRING)
+	_prop(props, "autostyle_numbers_pad_decimals", TYPE_BOOL)
+	_prop(props, "autostyle_numbers_decimals", TYPE_INT)
+	_prop(props, "autostyle_emojis", TYPE_BOOL)
+	
+	_prop_group(props, "Effect", "effect_")
+	_prop_range(props, "effect_weight") 
+
+	_prop_group(props, "Overrides", "override_")
+	_prop(props, "override_bbcodeEnabled", TYPE_BOOL)
+	_prop(props, "override_clipContents", TYPE_BOOL)
+	_prop(props, "override_fitContent", TYPE_BOOL)
+	
+	
+	return props
+
+func _prop_group(list: Array[Dictionary], name: String, hint_string: String):
+	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_GROUP, hint_string=hint_string })
+
+func _prop_subgroup(list: Array[Dictionary], name: String, hint_string: String):
+	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_SUBGROUP, hint_string=hint_string })
+
+func _prop_enum(list: Array[Dictionary], name: StringName, en: Variant):
+	_prop(list, name, TYPE_INT, PROPERTY_HINT_ENUM, ",".join(en.keys().map(func(s): return s.capitalize())))
+
+func _prop_range(list: Array[Dictionary], name: StringName, type: int = TYPE_FLOAT, minn = 0.0, maxx = 1.0):
+	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_RANGE, hint_string="%s,%s" % [minn, maxx] })
+
+func _prop_node(list: Array[Dictionary], name: StringName, hint_string: String = ""):
+	list.append({ name=name, type=TYPE_OBJECT, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_NODE_TYPE, hint_string=hint_string })
+
+func _prop(list: Array[Dictionary], name: StringName, type: int, hint: PropertyHint = PROPERTY_HINT_NONE, hint_string: String = ""):
+	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT, hint=hint, hint_string=hint_string })
 
 ## Text including bbcode to be converted.
-@export_multiline var bbcode := "": set = set_bbcode
+var bbcode := "": set=set_bbcode
 
 ## Animating in the editor might be laggy.
-@export var effects: EffectsMode = EffectsMode.ON:
+var effects: EffectsMode = EffectsMode.ON:
 	set(x):
 		effects = x
 		_redraw()
 
 ## Automatically align text.
-@export var alignment: Align = Align.CENTER:
+var alignment: Align = Align.CENTER:
 	set(x):
 		alignment = x
 		_redraw()
 
 ## Default font color.
-@export var color := Color.WHITE:
+var color := Color.WHITE:
 	set(x):
 		color = x
 		_redraw()
@@ -89,14 +163,13 @@ func _get_property_list():
 
 ## Scales relative to font scale.
 ## Use bbcode [:+1:]. It is autoclosing.
-@export var emoji_scale := 1.0:
+var emoji_scale := 1.0:
 	set(x):
 		emoji_scale = x
 		_redraw()
 
-@export_group("Font", "font_")
 ## Automatically search for -bold, -italic, -bolditalic, and -monospace.
-@export var font_auto_setup := true
+var font_auto_setup := true
 ## Default font to use.
 var font := "":
 	set = set_font
@@ -104,7 +177,7 @@ var font := "":
 ## Default size.
 ## Use float tag [2.0] to resize relative.
 ## Use int tag [32] to resize absolute.
-@export var font_size: int = 16:
+var font_size: int = 16:
 	set(x):
 		font_size = clampi(x, MIN_FONT_SIZE, MAX_FONT_SIZE)
 		add_theme_font_size_override("bold_font_size", font_size)
@@ -115,44 +188,43 @@ var font := "":
 		_redraw()
 
 ## Custom font thickness when using bold tag.
-@export var font_bold_weight := 1.5:
+var font_bold_weight := 1.5:
 	set(f):
 		font_bold_weight = f
 		_update_subfonts()
 		
 ## Custom font slant when using italics tag. (Can be negative.)
-@export var font_italics_slant := 0.25:
+var font_italics_slant := 0.25:
 	set(f):
 		font_italics_slant = f
 		_update_subfonts()
 
 ## Custom font thickness when using italics tag.
-@export var font_italics_weight := -.25:
+var font_italics_weight := -.25:
 	set(f):
 		font_italics_weight = f
 		_update_subfonts()
 
 ## Used to prevent slow updating.
-@export var font_cache: Dictionary
+var font_cache: Dictionary
 
-@export_group("Shadow", "shadow")
 ## Automatically sized based on font size.
-@export var shadow_enabled: bool = false:
+var shadow_enabled: bool = false:
 	set(v):
 		shadow_enabled = v
 		_update_theme_shadow()
 
-@export var shadow_offset := 0.08:
+var shadow_offset := 0.08:
 	set(s):
 		shadow_offset = s
 		_update_theme_shadow()
 
-@export_range(0.0, 1.0) var shadow_alpha := 0.25:
+var shadow_alpha := 0.25:
 	set(s):
 		shadow_alpha = s
 		_update_theme_shadow()
 
-@export var shadow_outline_size := 0.1:
+var shadow_outline_size := 0.1:
 	set(s):
 		shadow_outline_size = s
 		_update_theme_shadow()
@@ -169,8 +241,7 @@ func _update_theme_shadow():
 		remove_theme_constant_override("shadow_offset_y")
 		remove_theme_constant_override("shadow_outline_size")
 
-@export_group("Outline", "outline_")
-@export var outline_size := 0:
+var outline_size := 0:
 	set(o):
 		outline_size = o
 		add_theme_constant_override("outline_size", o)
@@ -178,88 +249,81 @@ func _update_theme_shadow():
 		_update_color()
 
 ## Automatically colorize outlines based on font color.
-@export var outline_mode: OutlineStyle = OutlineStyle.DARKEN:
+var outline_mode: OutlineStyle = OutlineStyle.DARKEN:
 	set(o):
 		outline_mode = o
 		_redraw()
 		_update_color()
 
 ## How much to shift outline color.
-@export_range(0.0, 1.0) var outline_adjust := 0.8:
+var outline_adjust := 0.8:
 	set(x):
 		outline_adjust = x
 		_redraw()
 		_update_color()
-	
-@export var outline_hue_adjust := 0.0125:
+
+var outline_hue_adjust := 0.0125:
 	set(x):
 		outline_hue_adjust = x
 		_redraw()
 		_update_color()
 
-@export_group("Nicer Quotes", "nicer_quotes_")
 ## Display “Text” instead of "Text".
-@export var nicer_quotes_enabled := true
-@export var nicer_quotes_format := "“%s”"
+var nicer_quotes_enabled := true
+var nicer_quotes_format := "“%s”"
 
-@export_group("Markdown", "markdown_")
 ## **bold** *italic* ***bold italic*** ~highlight~
-@export var markdown_enabled := true
-@export_subgroup("Format", "markdown_format_")
-@export var markdown_format_italics := "[i]%s[]" ## _italic_
-@export var markdown_format_bold := "[b]%s[]" ## __bold__
-@export var markdown_format_bold_italics := "[bi]%s[]" ## ___bold italic___
-@export var markdown_format_highlight := "[green;sin]%s[]" ## ~highlight~
-@export var markdown_format_italics2 := "[i;gray]*%s*[]" ## *italic*
-@export var markdown_format_bold2 := "[b]*%s*[]" ## **bold**
-@export var markdown_format_bold_italics2 := "%s" ## ***bold italic***
+var markdown_enabled := true
+var markdown_format_italics := "[i]%s[]" ## _italic_
+var markdown_format_bold := "[b]%s[]" ## __bold__
+var markdown_format_bold_italics := "[bi]%s[]" ## ___bold italic___
+var markdown_format_highlight := "[green;sin]%s[]" ## ~highlight~
+var markdown_format_italics2 := "[i;gray]*%s*[]" ## *italic*
+var markdown_format_bold2 := "[b]*%s*[]" ## **bold**
+var markdown_format_bold_italics2 := "%s" ## ***bold italic***
 
-@export_group("Effect", "effect_")
-@export_range(0.0, 1.0) var effect_weight := 0.0
+var effect_weight := 0.0
 
-@export_group("Context", "context_")
 ## Will replace $properties in text.
 ## Can be a function: "I have $player.item_count("coins") coins."
 ## Or array elements: "Slot 3 has $slots[3] in it.
-@export var context_enabled := true
+var context_enabled := true
 ## For use with $property to display node properties. 
-@export var context_path: NodePath = "/root/State"
+var context_path: NodePath = ^"/root/State"
 ## Extra parameters that can be accessed in context.
-@export_storage var context_state := {}
+var context_state: Dictionary[StringName, Variant] = {}
 ## Will attempt to call `to_rich_string()` on objects. Otherwise `.to_string()` is used.
-@export var context_nice_objects := true
+var context_rich_objects := true
 ## Will automatically add commas to integers: 1234 -> 1,234
-@export var context_nice_ints := true
+var context_rich_ints := true
 ## Will niceify arrays.
-@export var context_nice_array := true
+var context_rich_array := true
 
-@export_group("Auto Style", "autostyle_")
 ## Add tag to all numbers?
-@export var autostyle_numbers := true
+var autostyle_numbers := true
 ## Tag to wrap numbers in.
-@export var autostyle_numbers_tag := "[salmon]%s[]"
+var autostyle_numbers_tag := "[salmon]%s[]"
 ## Automatically pad numbers to limit trailing decimals?
-@export var autostyle_numbers_pad_decimals := true
+var autostyle_numbers_pad_decimals := true
 ## How many decimal places?
-@export var autostyle_numbers_decimals := 2
+var autostyle_numbers_decimals := 2
 ## Automatically detects :smile: emojis.
-@export var autostyle_emojis := true
+var autostyle_emojis := true
 
-@export_group("Overrides", "override_")
 ## Override so bbcode_enabled = true at init.
-@export var override_bbcodeEnabled := true:
+var override_bbcodeEnabled := true:
 	set(b):
 		override_bbcodeEnabled = b
 		bbcode_enabled = b
 
 ## Override s fit_content = true at init.
-@export var override_fitContent := true:
+var override_fitContent := true:
 	set(f):
 		override_fitContent = f
 		fit_content = f
 
 ## Some animations can go out of bounds. So override to disable clipping.
-@export var override_clipContents := false:
+var override_clipContents := false:
 	set(c):
 		override_clipContents = c
 		clip_contents = c
@@ -270,8 +334,6 @@ var _meta := {}
 var _meta_hovered: Variant = null
 var _expression_error := OK
 @export_storage var _random: Array[int] ## Used in the effects as a random offset.
-### We need to cache local_mouse_position as it is slow to call repeatedly.
-#var _mouse_position: Vector2
 
 func _init():
 	if not Engine.is_editor_hint():
@@ -345,7 +407,7 @@ func _redraw():
 	if is_inside_tree():
 		var frame := get_tree().get_frame()
 		if frame == _last_drawn_at:
-			print("skip _redraw")
+			print("Skip _redraw")
 			return
 		_last_drawn_at = frame
 	set_bbcode(bbcode)
@@ -355,17 +417,23 @@ func set_bbcode(btext: String):
 	if not Engine.is_editor_hint() and bbcode == btext:
 		return
 	
-	bbcode = btext
-	text = ""
-	## HACK: Deferred so it outraces the set_text function.
-	_set_bbcode.call_deferred()
-	
-	if override_fitContent:
-		await finished
+	if not bbcode == btext:
+		bbcode = btext
+		#text = ""
+		## HACK: Deferred so it outraces the set_text function.
 		if is_inside_tree():
-			await get_tree().process_frame
-		custom_minimum_size.y = get_content_height()
-	
+			_set_bbcode()
+		else:
+			await tree_entered
+			_set_bbcode.call_deferred()
+
+func _clear_font_cache():
+	font_cache.clear()
+
+func _update_font_cache():
+	_clear_font_cache()
+	FontHelper.get_font_paths(font_cache)
+
 func _set_bbcode():
 	clear()
 	uninstall_effects()
@@ -392,10 +460,19 @@ func _set_bbcode():
 	if color != Color.WHITE:
 		_pop_color(Color.WHITE)
 	
+	var time := Time.get_ticks_msec()
+	
 	seed(hash(get_parsed_text()))
 	_random = []
 	for i in get_total_character_count():
 		_random.append(randi())
+	
+	# TODO: Test.
+	if override_fitContent:
+		await finished
+		if is_inside_tree():
+			await get_tree().process_frame
+		custom_minimum_size.y = get_content_height()
 
 func _resize_to_content():
 	autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -411,6 +488,7 @@ func set_font(id: String):
 	_update_subfonts()
 
 func _update_subfonts():
+	return
 	if font_auto_setup:
 		FontHelper.set_fonts(self, font, font_bold_weight, font_italics_slant, font_italics_weight)
 
@@ -459,25 +537,11 @@ func _preparse(btext :String) -> String:
 		# Replace the placeholders.
 		btext = _replace(btext, r"&&(\d+)&&", func(strings):
 			return bbcode_placeholder[strings[1].to_int()])
-		
-		#btext = _format_between(btext, "***", markdown_format_bold_italics2)
-		#btext = _format_between(btext, "___", markdown_format_bold_italics)
-		#btext = _format_between(btext, "**", markdown_format_bold2)
-		#btext = _format_between(btext, "__", markdown_format_bold)
-		#btext = _format_between(btext, "*", markdown_format_italics2)
-		#btext = _format_between(btext, "_", markdown_format_italics)
-		#btext = _format_between(btext, "~", markdown_format_highlight)
 	
 	# Nicefy up stuff that isn't tagged.
 	btext = _replace_outside(btext, TAG_OPENED, TAG_CLOSED, _preparse_untagged)
 	
 	return btext
-
-static func is_style(s: String, style: String) -> bool:
-	return s.begins_with(style) and s.ends_with(style)
-
-static func unwrap_stype(s: String, style: String) -> String:
-	return s.trim_prefix(style).trim_suffix(style)
 
 # Parses anything outside of tags, like markdown and quotes.
 func _preparse_untagged(btext: String) -> String:
@@ -548,25 +612,25 @@ func replace_context(string: String) -> String:
 	# $pattern
 	string = _replace(string, r"(?<!\\)\$[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)*(?:\([^\)]*\))?(?![^\[\]]*\])", func(strings):
 		var path = strings[0]
-		return _get_expression_nice(path, path.trim_prefix("$")))
+		return _get_expression_rich(path, path.trim_prefix("$")))
 	
 	# {} pattern
 	string = _replace(string, r"\{.*?\}", func(strings):
 		var exp: String = strings[0]
-		return _get_expression_nice(exp, unwrap(exp, "{}")))
+		return _get_expression_rich(exp, unwrap(exp, "{}")))
 	
 	return string
 
-func _get_expression_nice(exp: String, exp_clean: String) -> String:
+func _get_expression_rich(exp: String, exp_clean: String) -> String:
 	var value = get_expression(exp_clean)
 	if _expression_error != OK:
 		return "[red]%s[]" % exp
 	else:
-		if typeof(value) == TYPE_INT and context_nice_ints:
+		if typeof(value) == TYPE_INT and context_rich_ints:
 			return commas(value)
-		elif typeof(value) == TYPE_OBJECT and context_nice_objects and value.has_method(&"to_rich_string"):
+		elif typeof(value) == TYPE_OBJECT and context_rich_objects and value.has_method(&"to_rich_string"):
 			return value.to_rich_string()
-		elif typeof(value) == TYPE_ARRAY and context_nice_array:
+		elif typeof(value) == TYPE_ARRAY and context_rich_array:
 			var nice_array := []
 			for item in value:
 				match typeof(item):
@@ -646,7 +710,12 @@ func _parse_tags(tags_string: String):
 	if added_stack and len(_stack) and not len(_stack[-1]):
 		_stack.pop_back()
 
-func get_expression(ex: String, state2 := {}):
+func get_expression(ex: String, state2 := {}) -> Variant:
+	if not is_inside_tree():
+		if not Engine.is_editor_hint():
+			push_error("Can't get_expression when outside tree.")
+		return null
+	
 	var node := get_node(context_path)
 	
 	# If a pipe is present.
@@ -1129,7 +1198,7 @@ func _has_effect(id:String) -> bool:
 			return true
 	
 	for dir in [DIR_TEXT_EFFECTS, DIR_TEXT_TRANSITIONS]:
-		var path = dir.path_join("RTE_%s.gd" % id)
+		var path = dir.path_join("rte_%s.gd" % id)
 		if FileAccess.file_exists(path):
 			return true
 
@@ -1147,15 +1216,21 @@ func _install_effect(id:String) -> bool:
 			return true
 	
 	for dir in [DIR_TEXT_EFFECTS, DIR_TEXT_TRANSITIONS]:
-		var path: String = dir.path_join("RTE_%s.gd" % id)
+		var path: String = dir.path_join("rte_%s.gd" % id)
 		if FileAccess.file_exists(path):
 			var effect: RichTextEffect = load(path).new()
 			effect.resource_name = id
-			effect.set_meta("rt", get_instance_id())
+			effect.set_meta(&"rt", get_instance_id())
 			install_effect(effect)
 			return true
 	
 	return false
+
+static func is_style(s: String, style: String) -> bool:
+	return s.begins_with(style) and s.ends_with(style)
+
+static func unwrap_stype(s: String, style: String) -> String:
+	return s.trim_prefix(style).trim_suffix(style)
 
 static func is_wrapped(t: String, w: String) -> bool:
 	return len(t) >= 2 and t[0] == w[0] and t[-1] == w[1]
@@ -1164,15 +1239,15 @@ static func unwrap(t: String, w: String) -> String:
 	return t.trim_prefix(w[0]).trim_suffix(w[-1])
 
 static func to_color(s: String, default: Variant = Color.WHITE) -> Variant:
-	# from name?
+	# From name?
 	var out := Color.WHITE
 	var clr := Color.from_string(s, Color.PAPAYA_WHIP)
 	if clr != Color.PAPAYA_WHIP:
 		return clr
-	# from hex?
+	# From hex?
 	if s.is_valid_html_color():
 		return Color(s)
-	# from floats?
+	# From floats?
 	if "," in s:
 		# form (0,0,0,0)
 		if is_wrapped(s, "()"):

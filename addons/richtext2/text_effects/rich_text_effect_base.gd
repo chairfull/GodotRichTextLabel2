@@ -31,7 +31,7 @@ func ease_back(t: float, s: float = 1.70158) -> float:
 
 func get_label() -> RichTextLabel:
 	if not label:
-		label = instance_from_id(get_meta("rt"))
+		label = instance_from_id(get_meta(&"rt"))
 	return label
 
 func get_label2() -> RicherTextLabel:
@@ -43,12 +43,12 @@ func get_label_animated() -> RichTextAnimation:
 func get_mouse_pos(c: CharFXTransform) -> Vector2:
 	var lb := get_label()
 	var frame := lb.get_tree().get_frame()
-	if frame != lb.get_meta("frame", 0):
+	if frame != lb.get_meta(&"frame", 0):
 		var mp := lb.get_local_mouse_position()
-		lb.set_meta("mouse_position", mp)
-		lb.set_meta("frame", frame)
+		lb.set_meta(&"mouse_position", mp)
+		lb.set_meta(&"frame", frame)
 		return mp
-	return lb.get_meta("mouse_position")#get_label2()._mouse_position
+	return lb.get_meta(&"mouse_position")
 
 func get_text() -> String:
 	return get_label().get_parsed_text()
