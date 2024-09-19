@@ -118,7 +118,6 @@ func _get_property_list():
 	_prop(props, "override_clipContents", TYPE_BOOL)
 	_prop(props, "override_fitContent", TYPE_BOOL)
 	
-	
 	return props
 
 func _prop_group(list: Array[Dictionary], name: String, hint_string: String):
@@ -170,6 +169,7 @@ var emoji_scale := 1.0:
 
 ## Automatically search for -bold, -italic, -bolditalic, and -monospace.
 var font_auto_setup := true
+
 ## Default font to use.
 var font := "":
 	set = set_font
@@ -282,6 +282,7 @@ var markdown_format_italics2 := "[i;gray]*%s*[]" ## *italic*
 var markdown_format_bold2 := "[b]*%s*[]" ## **bold**
 var markdown_format_bold_italics2 := "%s" ## ***bold italic***
 
+## TODO: RichTextEffects will use this to scale all their animations together.
 var effect_weight := 0.0
 
 ## Will replace $properties in text.
@@ -310,6 +311,9 @@ var autostyle_numbers_decimals := 2
 ## Automatically detects :smile: emojis.
 var autostyle_emojis := true
 
+## Automatically open https:// links in a browser when clicked.
+var meta_auto_hhtps := true
+
 ## Override so bbcode_enabled = true at init.
 var override_bbcodeEnabled := true:
 	set(b):
@@ -337,7 +341,8 @@ var _expression_error := OK
 
 func _init():
 	if not Engine.is_editor_hint():
-		_connect_meta()
+		meta_hover_started.connect(_meta_hover_started)
+		meta_hover_ended.connect(_meta_hover_ended)
 
 func _notification(what: int) -> void:
 	match what:
@@ -352,10 +357,6 @@ func _notification(what: int) -> void:
 		NOTIFICATION_EDITOR_POST_SAVE:
 			if font_auto_setup:
 				_update_subfonts()
-
-func _connect_meta():
-	meta_hover_started.connect(_meta_hover_started)
-	meta_hover_ended.connect(_meta_hover_ended)
 
 func _meta_hover_started(meta: Variant):
 	_meta_hovered = meta
@@ -379,14 +380,14 @@ func _gui_input(event: InputEvent) -> void:
 						pressed.emit(_meta[_meta_hovered])
 			
 				# Goto URL.
-				elif _meta_hovered.begins_with("https://"):
+				elif _meta_hovered.begins_with("https://") and meta_auto_hhtps:
 					OS.shell_open(_meta_hovered)
-		
+				
 				else:
 					push_error("No meta url for '%s'. %s" % [_meta_hovered, _meta.keys()])
 				
 				get_viewport().set_input_as_handled()
-
+			
 			MOUSE_BUTTON_RIGHT:
 				if _meta_hovered in _meta:
 					if _meta[_meta_hovered] is Callable:
@@ -417,15 +418,14 @@ func set_bbcode(btext: String):
 	if not Engine.is_editor_hint() and bbcode == btext:
 		return
 	
-	if not bbcode == btext:
-		bbcode = btext
-		#text = ""
-		## HACK: Deferred so it outraces the set_text function.
-		if is_inside_tree():
-			_set_bbcode()
-		else:
-			await tree_entered
-			_set_bbcode.call_deferred()
+	bbcode = btext
+	
+	## HACK: Deferred so it outraces the set_text function.
+	if is_inside_tree():
+		_set_bbcode()
+	else:
+		await tree_entered
+		_set_bbcode.call_deferred()
 
 func _clear_font_cache():
 	font_cache.clear()
@@ -435,8 +435,10 @@ func _update_font_cache():
 	FontHelper.get_font_paths(font_cache)
 
 func _set_bbcode():
-	clear()
+	text = ""
+	#var t := Time.get_ticks_msec()
 	uninstall_effects()
+	#print(Time.get_ticks_msec() - t)
 	_stack.clear()
 	_state = {
 		color = color,
@@ -1209,7 +1211,7 @@ func _get_character_random(index: int) -> int:
 		return _random[index]
 	return 0
 
-func _install_effect(id:String) -> bool:
+func _install_effect(id: String) -> bool:
 	# Already installed?
 	for e in custom_effects:
 		if e.resource_name == id:
