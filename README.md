@@ -182,6 +182,8 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.4.1
+	- Fixed variables not being resetable to defaults.
 - 1.4
 	- Changed how bbcode is initialized when not yet inside the tree.
 	- Made node selection slightly faster by moving all `@export` to `_get_property_list`.

@@ -17,7 +17,7 @@ func _process_custom_fx(c: CharFXTransform):
 	c.offset.y -= t * 4.0
 	
 	if c.offset.y < -1.0:
-		if get_char(c) in TO_CHANGE:
+		if get_char(c) in TO_CHANGE and get_label().has_emoji_font():
 			var font := get_label2()._get_emoji_font()
 			if font:
 				c.font = font.get_rids()[0]

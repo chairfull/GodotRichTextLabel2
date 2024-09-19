@@ -7,6 +7,9 @@ signal internal_right_pressed(variant: Variant)
 signal pressed(variant: Variant)
 signal right_pressed(variant: Variant)
 
+## HACK: To allow _revert functions to work.
+static var DEFAULTS := RicherTextLabel.new()
+
 const DIR_TEXT_EFFECTS := "res://addons/richtext2/text_effects/effects"
 const DIR_TEXT_TRANSITIONS := "res://addons/richtext2/text_effects/anims"
 const TAG_OPENED := "["
@@ -120,6 +123,12 @@ func _get_property_list():
 	
 	return props
 
+func _property_can_revert(property: StringName) -> bool:
+	return DEFAULTS.get(property) != null
+
+func _property_get_revert(property: StringName) -> Variant:
+	return DEFAULTS[property]
+
 func _prop_group(list: Array[Dictionary], name: String, hint_string: String):
 	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_GROUP, hint_string=hint_string })
 
@@ -136,7 +145,7 @@ func _prop_node(list: Array[Dictionary], name: StringName, hint_string: String =
 	list.append({ name=name, type=TYPE_OBJECT, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_NODE_TYPE, hint_string=hint_string })
 
 func _prop(list: Array[Dictionary], name: StringName, type: int, hint: PropertyHint = PROPERTY_HINT_NONE, hint_string: String = ""):
-	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT, hint=hint, hint_string=hint_string })
+	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE, hint=hint, hint_string=hint_string })
 
 ## Text including bbcode to be converted.
 var bbcode := "": set=set_bbcode
@@ -830,7 +839,7 @@ func _get_font(id: StringName) -> Font:
 		font_cache[id] = load(font_cache[id])
 	return font_cache[id]
 
-func _has_emoji_font() -> bool:
+func has_emoji_font() -> bool:
 	return "emoji_font" in font_cache
 
 func _get_emoji_font() -> Font:
@@ -840,16 +849,15 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 	if not _passes_condition(tag, raw):
 		return
 	
-	# font sizes
+	# Font sizes.
 	if len(tag) and tag[0].is_valid_int():
 		_push_font_size(int(_state.font_size * _number(tag)))
 		return
 	
-	# emoji: old style
+	# Emoji: old style.
 	if tag in Emoji.OLDIE:
-		var efont := _get_emoji_font()
-		if efont != null:
-			push_font(efont)
+		if has_emoji_font():
+			push_font(_get_emoji_font())
 			push_font_size(ceil(_state.font_size * emoji_scale))
 			add_text(Emoji.OLDIE[tag])
 			pop()
@@ -858,13 +866,12 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 			append_text(Emoji.OLDIE[tag])
 		return
 	
-	# emoji: by name
+	# Emoji: by name.
 	if tag.begins_with(":") and tag.ends_with(":"):
 		var emoji_name := tag.trim_suffix(":").trim_prefix(":")
 		if emoji_name in Emoji.NAMES:
-			var efont := _get_emoji_font()
-			if efont != null:
-				push_font(efont, ceil(_state.font_size * emoji_scale))
+			if has_emoji_font():
+				push_font(_get_emoji_font(), ceil(_state.font_size * emoji_scale))
 				add_text(Emoji.NAMES[emoji_name])
 				pop()
 			else:
