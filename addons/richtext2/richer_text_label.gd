@@ -7,8 +7,6 @@ static var DEFAULTS := RicherTextLabel.new()
 
 const DIR_TEXT_EFFECTS := "res://addons/richtext2/text_effects/effects"
 const DIR_TEXT_TRANSITIONS := "res://addons/richtext2/text_effects/anims"
-const TAG_OPENED := "["
-const TAG_CLOSED := "]"
 const MIN_FONT_SIZE := 8
 const MAX_FONT_SIZE := 512
 
@@ -27,11 +25,15 @@ enum {
 	T_FLAG_CAP, T_FLAG_UPPER, T_FLAG_LOWER,
 }
 
-enum OutlineStyle {
-	OFF, ## No outline.
-	DARKEN, ## Outline will be darker than font color.
-	LIGHTEN, ## Outline will be lighter than font color.
+enum OutlineMode {
+	OFF, ## Disables outline.
+	DARKEN, ## Outlines will be darker than text color.
+	LIGHTEN, ## Outlines will be lighter than text color.
+	CUSTOM, ## Uses outline_color for all text.
+	CUSTOM_DARKEN, ## Uses outline_color by default, but darkens colored text outlines.
+	CUSTOM_LIGHTEN, ## Uses outline_color by default, but lightens colored text outlines.
 }
+
 enum EffectsMode {
 	OFF, ## Disable text effects.
 	OFF_IN_EDITOR, ## Don't animate effects in edit mode.
@@ -59,7 +61,7 @@ var color := Color.WHITE:
 	set(x):
 		color = x
 		_redraw()
-		_update_color()
+		_update_theme_outline()
 
 ## Scales relative to font scale.
 ## Use bbcode [:+1:]. It is autoclosing.
@@ -72,8 +74,7 @@ var emoji_scale := 1.0:
 var font_auto_setup := true
 
 ## Default font to use.
-var font := "":
-	set = set_font
+var font := "": set=set_font
 
 ## Default size.
 ## Use float tag [2.0] to resize relative.
@@ -81,11 +82,11 @@ var font := "":
 var font_size: int = 16:
 	set(x):
 		font_size = clampi(x, MIN_FONT_SIZE, MAX_FONT_SIZE)
-		add_theme_font_size_override("bold_font_size", font_size)
-		add_theme_font_size_override("bold_italics_font_size", font_size)
-		add_theme_font_size_override("italics_font_size", font_size)
-		add_theme_font_size_override("mono_font_size", font_size)
-		add_theme_font_size_override("normal_font_size", font_size)
+		add_theme_font_size_override(&"bold_font_size", font_size)
+		add_theme_font_size_override(&"bold_italics_font_size", font_size)
+		add_theme_font_size_override(&"italics_font_size", font_size)
+		add_theme_font_size_override(&"mono_font_size", font_size)
+		add_theme_font_size_override(&"normal_font_size", font_size)
 		_redraw()
 
 ## Custom font thickness when using bold tag.
@@ -107,6 +108,7 @@ var font_italics_weight := -.25:
 		_update_subfonts()
 
 ## Used to prevent slow updating.
+## TODO: Create a FontCache resource to poll instead.
 var font_cache: Dictionary
 
 ## Automatically sized based on font size.
@@ -132,42 +134,51 @@ var shadow_outline_size := 0.1:
 
 func _update_theme_shadow():
 	if shadow_enabled:
-		add_theme_color_override("font_shadow_color", Color(0, 0, 0, shadow_alpha))
-		add_theme_constant_override("shadow_offset_x", floor(font_size * shadow_offset))
-		add_theme_constant_override("shadow_offset_y", floor(font_size * shadow_offset))
-		add_theme_constant_override("shadow_outline_size", ceil(font_size * shadow_outline_size))
+		add_theme_color_override(&"font_shadow_color", Color(0, 0, 0, shadow_alpha))
+		add_theme_constant_override(&"shadow_offset_x", floor(font_size * shadow_offset))
+		add_theme_constant_override(&"shadow_offset_y", floor(font_size * shadow_offset))
+		add_theme_constant_override(&"shadow_outline_size", ceil(font_size * shadow_outline_size))
 	else:
-		remove_theme_color_override("font_shadow_color")
-		remove_theme_constant_override("shadow_offset_x")
-		remove_theme_constant_override("shadow_offset_y")
-		remove_theme_constant_override("shadow_outline_size")
+		remove_theme_color_override(&"font_shadow_color")
+		remove_theme_constant_override(&"shadow_offset_x")
+		remove_theme_constant_override(&"shadow_offset_y")
+		remove_theme_constant_override(&"shadow_outline_size")
 
 var outline_size := 0:
 	set(o):
 		outline_size = o
-		add_theme_constant_override("outline_size", o)
 		_redraw()
-		_update_color()
+		_update_theme_outline()
 
 ## Automatically colorize outlines based on font color.
-var outline_mode: OutlineStyle = OutlineStyle.DARKEN:
+var outline_mode: OutlineMode = OutlineMode.DARKEN:
 	set(o):
 		outline_mode = o
 		_redraw()
-		_update_color()
+		_update_theme_outline()
+		notify_property_list_changed()
+
+## Used with OutlineMode.CUSTOM, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN.
+var outline_color := Color.BLACK:
+	set(x):
+		outline_color = x
+		_redraw()
+		_update_theme_outline()
 
 ## How much to shift outline color.
 var outline_adjust := 0.8:
 	set(x):
 		outline_adjust = x
 		_redraw()
-		_update_color()
+		_update_theme_outline()
 
+## Nudges the tint of the outline so it isn't identical to the font.
+## Produces more contrast.
 var outline_hue_adjust := 0.0125:
 	set(x):
 		outline_hue_adjust = x
 		_redraw()
-		_update_color()
+		_update_theme_outline()
 
 ## Display “Text” instead of "Text".
 var nicer_quotes_enabled := true
@@ -310,13 +321,23 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	#var cleaned := for_text
 	#for rm in re.search_all(cleaned):
 		#cleaned = cleaned.replace(rm.strings[0], "")
-	## Shrink to minimum size.
-	#label.custom_minimum_size.x = ThemeDB.fallback_font.get_string_size(cleaned, label.font_size).x
-	#
 	return label
 
-func _update_color():
-	add_theme_color_override("font_outline_color", _get_outline_color(color))
+func _update_theme_outline():
+	if outline_size > 0 and outline_mode != OutlineMode.OFF:
+		add_theme_constant_override(&"outline_size", outline_size)
+	else:
+		remove_theme_constant_override(&"outline_size")
+	
+	match outline_mode:
+		OutlineMode.OFF:
+			remove_theme_color_override(&"font_outline_color")
+		OutlineMode.DARKEN:
+			add_theme_color_override(&"font_outline_color", hue_shift(color.darkened(outline_adjust), outline_hue_adjust))
+		OutlineMode.LIGHTEN:
+			add_theme_color_override(&"font_outline_color", hue_shift(color.lightened(outline_adjust), outline_hue_adjust))
+		OutlineMode.CUSTOM, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN:
+			add_theme_color_override(&"font_outline_color", outline_color)
 
 var _last_drawn_at := 0
 func _redraw():
@@ -457,7 +478,7 @@ func _preparse(btext :String) -> String:
 			return bbcode_placeholder[strings[1].to_int()])
 	
 	# Nicefy up stuff that isn't tagged.
-	btext = _replace_outside(btext, TAG_OPENED, TAG_CLOSED, _preparse_untagged)
+	btext = _replace_outside(btext, "[", "]", _preparse_untagged)
 	
 	return btext
 
@@ -955,28 +976,37 @@ func _push_color(clr: Color):
 	_state.color = clr
 	push_color(clr)
 	
-	# Outline color.
-	var outline_color := _get_outline_color(clr)
-	push_outline_color(outline_color)
-	
-	# Outline size.
 	if outline_size > 0:
-		push_outline_size(outline_size)
+		if outline_mode in [OutlineMode.DARKEN, OutlineMode.LIGHTEN, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN]:
+			# Outline color.
+			var outline_color := _get_outline_color(clr)
+			push_outline_color(outline_color)
+			
+			# Outline size.
+			push_outline_size(outline_size)
 
 func _get_outline_color(clr: Color) -> Color:
-	var out := clr
 	match outline_mode:
-		OutlineStyle.DARKEN: out = clr.darkened(outline_adjust)
-		OutlineStyle.LIGHTEN: out = clr.lightened(outline_adjust)
-	return hue_shift(out, outline_hue_adjust)
+		OutlineMode.CUSTOM:
+			return outline_color
+		OutlineMode.DARKEN, OutlineMode.CUSTOM_DARKEN:
+			return hue_shift(clr.darkened(outline_adjust), outline_hue_adjust)
+		OutlineMode.LIGHTEN, OutlineMode.CUSTOM_LIGHTEN:
+			return hue_shift(clr.lightened(outline_adjust), outline_hue_adjust)
+	return clr
 
 func _pop_color(data):
-	_state.color = data
 	pop()
-	if outline_mode != OutlineStyle.OFF:
-		pop()
+	
 	if outline_size > 0:
-		pop()
+		if outline_mode in [OutlineMode.DARKEN, OutlineMode.LIGHTEN, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN]:
+			# Outline color.
+			pop()
+			
+			# Outline size.
+			pop()
+	
+	_state.color = data
 
 func _pop_color_bg(data):
 	_state.color_bg = data
@@ -1111,76 +1141,79 @@ func _get_property_list():
 		_update_font_cache()
 	var fonts := "," + ",".join(font_cache.keys())
 	var props: Array[Dictionary]
-	_prop(props, "bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
-	_prop_enum(props, "effects", EffectsMode)
-	_prop(props, "alignment", TYPE_INT, PROPERTY_HINT_ENUM, "Left,Center,Right,Fill")
-	_prop(props, "color", TYPE_COLOR)
-	_prop(props, "emoji_scale", TYPE_FLOAT)
+	_prop(props, &"bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
+	_prop_enum(props, &"effects", EffectsMode)
+	_prop(props, &"alignment", TYPE_INT, PROPERTY_HINT_ENUM, "Left,Center,Right,Fill")
+	_prop(props, &"color", TYPE_COLOR)
+	_prop(props, &"emoji_scale", TYPE_FLOAT)
 	
 	_prop_group(props, "Font", "font_")
-	_prop(props, "font", TYPE_STRING, PROPERTY_HINT_ENUM_SUGGESTION, fonts)
-	_prop(props, "font_auto_setup", TYPE_BOOL)
-	_prop(props, "font_size", TYPE_INT)
-	_prop(props, "font_bold_weight", TYPE_FLOAT)
-	_prop(props, "font_italics_slant", TYPE_FLOAT)
-	_prop(props, "font_italics_weight", TYPE_FLOAT)
-	_prop(props, "font_cache", TYPE_DICTIONARY)
+	_prop(props, &"font", TYPE_STRING, PROPERTY_HINT_ENUM_SUGGESTION, fonts)
+	_prop(props, &"font_auto_setup", TYPE_BOOL)
+	_prop(props, &"font_size", TYPE_INT)
+	_prop(props, &"font_bold_weight", TYPE_FLOAT)
+	_prop(props, &"font_italics_slant", TYPE_FLOAT)
+	_prop(props, &"font_italics_weight", TYPE_FLOAT)
+	_prop(props, &"font_cache", TYPE_DICTIONARY)
 	
 	_prop_group(props, "Shadow", "shadow_")
-	_prop(props, "shadow_enabled", TYPE_BOOL)
-	_prop(props, "shadow_offset", TYPE_FLOAT)
-	_prop_range(props, "shadow_alpha")
-	_prop(props, "shadow_outline_size", TYPE_FLOAT)
+	_prop(props, &"shadow_enabled", TYPE_BOOL)
+	_prop(props, &"shadow_offset", TYPE_FLOAT)
+	_prop_range(props, &"shadow_alpha")
+	_prop(props, &"shadow_outline_size", TYPE_FLOAT)
 	
 	_prop_group(props, "Outline", "outline_")
-	_prop(props, "outline_size", TYPE_INT)
-	_prop_enum(props, "outline_mode", OutlineStyle)
-	_prop_range(props, "outline_adjust")
-	_prop_range(props, "outline_hue_adjust")
+	_prop(props, &"outline_size", TYPE_INT)
+	_prop_enum(props, &"outline_mode", OutlineMode)
+	if outline_mode in [OutlineMode.CUSTOM, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN]:
+		_prop(props, &"outline_color", TYPE_COLOR)
+	if outline_mode in [OutlineMode.DARKEN, OutlineMode.LIGHTEN, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN]:
+		_prop_range(props, &"outline_adjust")
+		_prop_range(props, &"outline_hue_adjust")
 	
 	_prop_group(props, "Nicer Quotes", "nicer_quotes_")
-	_prop(props, "nicer_quotes_enabled", TYPE_BOOL)
-	_prop(props, "nicer_quotes_format", TYPE_STRING)
+	_prop(props, &"nicer_quotes_enabled", TYPE_BOOL)
+	_prop(props, &"nicer_quotes_format", TYPE_STRING)
 	
 	_prop_group(props, "Markdown", "markdown_")
-	_prop(props, "markdown_enabled", TYPE_BOOL)
+	_prop(props, &"markdown_enabled", TYPE_BOOL)
 	_prop_subgroup(props, "Format", "markdown_format_")
-	_prop(props, "markdown_format_bold", TYPE_STRING)
-	_prop(props, "markdown_format_italics", TYPE_STRING)
-	_prop(props, "markdown_format_bold_italics", TYPE_STRING)
-	_prop(props, "markdown_format_highlight", TYPE_STRING)
-	_prop(props, "markdown_format_bold2", TYPE_STRING)
-	_prop(props, "markdown_format_italics2", TYPE_STRING)
-	_prop(props, "markdown_format_bold_italics2", TYPE_STRING)
+	_prop(props, &"markdown_format_bold", TYPE_STRING)
+	_prop(props, &"markdown_format_italics", TYPE_STRING)
+	_prop(props, &"markdown_format_bold_italics", TYPE_STRING)
+	_prop(props, &"markdown_format_highlight", TYPE_STRING)
+	_prop(props, &"markdown_format_bold2", TYPE_STRING)
+	_prop(props, &"markdown_format_italics2", TYPE_STRING)
+	_prop(props, &"markdown_format_bold_italics2", TYPE_STRING)
 	
 	_prop_group(props, "Context", "context_")
-	_prop(props, "context_enabled", TYPE_BOOL)
-	_prop(props, "context_path", TYPE_NODE_PATH)
-	_prop(props, "context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
-	_prop(props, "context_rich_objects", TYPE_BOOL)
-	_prop(props, "context_rich_ints", TYPE_BOOL)
-	_prop(props, "context_rich_array", TYPE_BOOL)
+	_prop(props, &"context_enabled", TYPE_BOOL)
+	_prop(props, &"context_path", TYPE_NODE_PATH)
+	_prop(props, &"context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
+	_prop(props, &"context_rich_objects", TYPE_BOOL)
+	_prop(props, &"context_rich_ints", TYPE_BOOL)
+	_prop(props, &"context_rich_array", TYPE_BOOL)
 	
 	_prop_group(props, "Auto Style", "autostyle_")
-	_prop(props, "autostyle_numbers", TYPE_BOOL)
-	_prop(props, "autostyle_numbers_tag", TYPE_STRING)
-	_prop(props, "autostyle_numbers_pad_decimals", TYPE_BOOL)
-	_prop(props, "autostyle_numbers_decimals", TYPE_INT)
-	_prop(props, "autostyle_emojis", TYPE_BOOL)
+	_prop(props, &"autostyle_numbers", TYPE_BOOL)
+	_prop(props, &"autostyle_numbers_tag", TYPE_STRING)
+	_prop(props, &"autostyle_numbers_pad_decimals", TYPE_BOOL)
+	_prop(props, &"autostyle_numbers_decimals", TYPE_INT)
+	_prop(props, &"autostyle_emojis", TYPE_BOOL)
 	
 	_prop_group(props, "Effect", "effect_")
-	_prop_range(props, "effect_weight")
+	_prop_range(props, &"effect_weight")
 
 	_prop_group(props, "Meta", "meta_")
-	_prop(props, "meta_auto_https", TYPE_BOOL)
-	_prop(props, "meta_cursor", TYPE_INT, PROPERTY_HINT_ENUM, "Arrow,Ibeam,PointingHand,Cross,Wait,Busy,Drag,CanDrop,Forbidden,Vsize,Hsize,BdiagSize,FdiagSize,Move,Vsplit,Hsplit,Help")
+	_prop(props, &"meta_auto_https", TYPE_BOOL)
+	_prop(props, &"meta_cursor", TYPE_INT, PROPERTY_HINT_ENUM, "Arrow,Ibeam,PointingHand,Cross,Wait,Busy,Drag,CanDrop,Forbidden,Vsize,Hsize,BdiagSize,FdiagSize,Move,Vsplit,Hsplit,Help")
 	
 	_prop_group(props, "Overrides", "override_")
-	_prop(props, "override_bbcodeEnabled", TYPE_BOOL)
-	_prop(props, "override_clipContents", TYPE_BOOL)
-	_prop(props, "override_fitContent", TYPE_BOOL)
-	_prop(props, "fit_width", TYPE_BOOL)
-	_prop(props, "fit_width_padding", TYPE_INT)
+	_prop(props, &"override_bbcodeEnabled", TYPE_BOOL)
+	_prop(props, &"override_clipContents", TYPE_BOOL)
+	_prop(props, &"override_fitContent", TYPE_BOOL)
+	_prop(props, &"fit_width", TYPE_BOOL)
+	_prop(props, &"fit_width_padding", TYPE_INT)
 	
 	return props
 

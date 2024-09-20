@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.5` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
+`v1.6` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
 
 Two Nodes:
 - `RicherTextLabel`: Reduce effort needed to display state data and stylize it.
@@ -184,6 +184,14 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.6
+	- Added `outline_color` to set the default outline color.
+	- Added outline modes:
+		- `CUSTOM` to apply default `outline_color` to all text.
+		- `CUSTOM_DARKEN` to apply `outline_color` to non colored text, but darken outlines otherwise.
+		- `CUSTOM_LIGHTEN` to apply `outline_color` to non colored text, but lighten outlines otherwise.
+	- Renamed `OutlineStyle` to `OutlineMode` to match property `outline_mode`.
+	- Fixed `OutlineMode.OFF` not turning off outlines.
 - 1.5
 	- Added `[!]` meta tag which calls an expression when pressed.
 	- Added `[^]` hint tag which calls an expression to display in a popup when hovered.
