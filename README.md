@@ -185,6 +185,7 @@ func mood(s: String, npc_id: String):
 
 # Changes
 - 1.6.3
+	- Fixed `color` property not being settable from script.
 	- Fixed alignment error and used slightly more efficient method.
 - 1.6.2
 	- Removed Godot 4.4.dev feature: `horizontal_alignment` property.

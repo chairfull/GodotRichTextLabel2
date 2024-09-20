@@ -330,6 +330,11 @@ func _update_theme_outline():
 	else:
 		remove_theme_constant_override(&"outline_size")
 	
+	if color != Color.WHITE:
+		add_theme_color_override(&"default_color", color)
+	else:
+		remove_theme_color_override(&"default_color")
+	
 	match outline_mode:
 		OutlineMode.OFF:
 			remove_theme_color_override(&"font_outline_color")
