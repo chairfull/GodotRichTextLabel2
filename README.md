@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.6.3` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
+`v1.7` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
 
 Two Nodes:
 - `RicherTextLabel`: Reduce effort needed to display state data and stylize it.
@@ -184,6 +184,11 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.7
+	- Changed `set_bbcode` to queue for the end of the frame.
+	- Moved tag state and stack to `STACK_STATE` object.
+	- Moved `font_cache` and font functions to `FontHelper`.
+	- Removed `_random` and set as meta property since it's rarely used.
 - 1.6.3
 	- Fixed `color` property not being settable from script.
 	- Fixed alignment error and used slightly more efficient method.

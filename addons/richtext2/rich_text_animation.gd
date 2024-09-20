@@ -40,6 +40,7 @@ enum {
 	TRIG_STARS_FINISHED,	## * ended
 }
 
+## TODO
 enum Style {
 	LETTER,	## Fade per letter.
 	WORD	## Fade per word.

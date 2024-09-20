@@ -2,8 +2,12 @@
 class_name RicherTextLabel
 extends RichTextLabel
 
+## Called after _set_update and the size was updated.
+signal _updated()
+
 ## HACK: To allow _revert functions to work.
 static var DEFAULTS := RicherTextLabel.new()
+static var STACK_STATE := preload("res://addons/richtext2/stack_state.gd").new()
 
 const DIR_TEXT_EFFECTS := "res://addons/richtext2/text_effects/effects"
 const DIR_TEXT_TRANSITIONS := "res://addons/richtext2/text_effects/anims"
@@ -61,11 +65,11 @@ var alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER:
 var color := Color.WHITE:
 	set(x):
 		color = x
-		_redraw()
 		_update_theme_outline()
+		_redraw()
 
 ## Scales relative to font scale.
-## Use bbcode [:+1:]. It is autoclosing.
+## Used with bbcode :banana:.
 var emoji_scale := 1.0:
 	set(x):
 		emoji_scale = x
@@ -253,12 +257,11 @@ var override_clipContents := false:
 		override_clipContents = c
 		clip_contents = c
 
-var _stack := []
-var _state := {}
 @export_storage var _meta := {}
 var _meta_hovered: Variant = null
 var _expression_error := OK
-@export_storage var _random: Array[int] ## Used in the effects as a random offset.
+## Set to true when a set_bbcode is going to occur at the end of the frame.
+var _setting_bbcode := false
 
 func _init():
 	if not Engine.is_editor_hint():
@@ -271,14 +274,65 @@ func _notification(what: int) -> void:
 		NOTIFICATION_EDITOR_PRE_SAVE:
 			if font_auto_setup:
 				# Clear auto fonts so they aren't saved to disk.
-				remove_theme_font_override("bold_font")
-				remove_theme_font_override("bold_italics_font")
-				remove_theme_font_override("italics_font")
-				remove_theme_font_override("normal_font")
+				remove_theme_font_override(&"bold_font")
+				remove_theme_font_override(&"bold_italics_font")
+				remove_theme_font_override(&"italics_font")
+				remove_theme_font_override(&"normal_font")
 		
 		NOTIFICATION_EDITOR_POST_SAVE:
 			if font_auto_setup:
 				_update_subfonts()
+
+func _redraw():
+	set_bbcode(bbcode)
+
+func set_bbcode(btext: String):
+	bbcode = btext
+	
+	if not _setting_bbcode:
+		_setting_bbcode = true
+		if not is_inside_tree():
+			await tree_entered
+		_set_bbcode.call_deferred()
+
+func _set_bbcode():
+	# Clear text and old stack state.
+	set_text("")
+	# Uninstall effects.
+	while len(custom_effects):
+		custom_effects.pop_back()
+	_meta.clear()
+	STACK_STATE.reset(self)
+	
+	push_paragraph(alignment)
+	
+	if color != Color.WHITE:
+		_push_color(color)
+	
+	_parse(_preparse(bbcode))
+	
+	if color != Color.WHITE:
+		_pop_color(Color.WHITE)
+	
+	_setting_bbcode = false
+	
+	# TODO: Test.
+	if override_fitContent:
+		await finished
+		if is_inside_tree():
+			await get_tree().process_frame
+		custom_minimum_size.y = get_content_height()
+		if fit_width:
+			custom_minimum_size.x = get_content_width() + fit_width_padding
+			size.x = custom_minimum_size.x
+	
+	_updated.emit()
+
+func _resize_to_content():
+	autowrap_mode = TextServer.AUTOWRAP_OFF
+	custom_minimum_size = Vector2(get_content_width(), get_content_height())
+	size = custom_minimum_size
+	set_anchors_preset(anchors_preset)
 
 func _meta_hover_started(meta: Variant):
 	_meta_hovered = meta
@@ -317,11 +371,6 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	label.context_path = context_path
 	label.bbcode = for_text
 	label.fit_width = true
-	# Strip bbcode tags.
-	#var re := RegEx.create_from_string(r"\[[^\]]+\]")
-	#var cleaned := for_text
-	#for rm in re.search_all(cleaned):
-		#cleaned = cleaned.replace(rm.strings[0], "")
 	return label
 
 func _update_theme_outline():
@@ -345,88 +394,8 @@ func _update_theme_outline():
 		OutlineMode.CUSTOM, OutlineMode.CUSTOM_DARKEN, OutlineMode.CUSTOM_LIGHTEN:
 			add_theme_color_override(&"font_outline_color", outline_color)
 
-var _last_drawn_at := 0
-func _redraw():
-	if is_inside_tree():
-		var frame := get_tree().get_frame()
-		if frame == _last_drawn_at:
-			print("Skip _redraw.")
-			return
-		_last_drawn_at = frame
-	set_bbcode(bbcode)
-
-func set_bbcode(btext: String):
-	# When not in editor, don't keep updating.
-	if not Engine.is_editor_hint() and bbcode == btext:
-		return
-	
-	bbcode = btext
-	
-	## HACK: Deferred so it outraces the set_text function.
-	if is_inside_tree():
-		_set_bbcode()
-	else:
-		await tree_entered
-		_set_bbcode.call_deferred()
-
-func _clear_font_cache():
-	font_cache.clear()
-
-func _update_font_cache():
-	_clear_font_cache()
-	FontHelper.get_font_paths(font_cache)
-
-func _set_bbcode():
-	text = ""
-	uninstall_effects()
-	_meta.clear()
-	_stack.clear()
-	_state = {
-		color = color,
-		color_bg = null,
-		color_fg = null,
-		align = alignment,
-		font = font,
-		font_size = font_size,
-		opened = {},
-		pipes = []
-	}
-	if not font_cache:
-		font_cache = {}
-		FontHelper.get_font_paths(font_cache)
-	
-	push_paragraph(alignment)
-	
-	if color != Color.WHITE:
-		_push_color(color)
-	
-	_parse(_preparse(bbcode))
-	
-	if color != Color.WHITE:
-		_pop_color(Color.WHITE)
-	
-	seed(hash(get_parsed_text()))
-	_random = []
-	for i in get_total_character_count():
-		_random.append(randi())
-	
-	# TODO: Test.
-	if override_fitContent:
-		await finished
-		if is_inside_tree():
-			await get_tree().process_frame
-		custom_minimum_size.y = get_content_height()
-		if fit_width:
-			custom_minimum_size.x = get_content_width() + fit_width_padding
-			size.x = custom_minimum_size.x
-
-func _resize_to_content():
-	autowrap_mode = TextServer.AUTOWRAP_OFF
-	custom_minimum_size = Vector2(get_content_width(), get_content_height())
-	size = custom_minimum_size
-	set_anchors_preset(anchors_preset)
-
-func set_meta_data(key: String, data: Variant):
+# TODO:
+func set_meta_data(key: StringName, data: Variant):
 	_meta[key] = data
 
 func set_font(id: String):
@@ -434,31 +403,17 @@ func set_font(id: String):
 	_update_subfonts()
 
 func _update_subfonts():
-	return
 	if font_auto_setup:
-		FontHelper.set_fonts(self, font, font_bold_weight, font_italics_slant, font_italics_weight)
+		FontHelper.set_fonts(self, font, font_bold_weight, font_italics_slant, font_italics_weight, FontHelper.cache)
 
 func get_normal_font() -> Font:
-	return get_theme_font("normal_font")
-
-func uninstall_effects():
-	while len(custom_effects):
-		custom_effects.pop_back()
+	return get_theme_font(&"normal_font")
 
 func _preparse(btext: String) -> String:
 	# Replace $ and {} properties.
 	if context_enabled:
 		btext = replace_context(btext)
 	
-	# TODO: Godot 4.4 feature.
-	#horizontal_alignment = alignment
-	# Primary alignment.
-	#match alignment:
-		#HORIZONTAL_ALIGNMENT_LEFT: btext = "[left]%s[]" % btext
-		#HORIZONTAL_ALIGNMENT_CENTER: btext = "[center]%s[]" % btext
-		#HORIZONTAL_ALIGNMENT_RIGHT: btext = "[right]%s[]" % btext
-		#HORIZONTAL_ALIGNMENT_FILL: btext = "[fill]%s[]" % btext
-		
 	# Markdown.
 	if markdown_enabled:
 		# Hide bbcode with placeholders.
@@ -512,7 +467,7 @@ func _preparse_untagged(btext: String) -> String:
 func _format_between(st: String, tag: String, frmt: String) -> String:
 	return _replace_between(st, tag, func(strings): return frmt % strings[1])
 
-# new version that works regardless of bbcode in the middle.
+# New version that works regardless of bbcode in the middle.
 func _replace_between(st: String, tag: String, call: Callable) -> String:
 	return _replace_between_both(st, tag, tag, call)
 
@@ -629,8 +584,8 @@ func _parse_tags(tags_string: String):
 	for tag in tags:
 		# Empty = close tags.
 		if tag == "":
-			if added_stack and len(_stack) and not len(_stack[-1]):
-				_stack.pop_back()
+			if added_stack and len(STACK_STATE.stack) and not len(STACK_STATE.stack[-1]):
+				STACK_STATE.stack.pop_back()
 			#if len(_stack) and not len(_stack[-1]):
 				#_add_text("[]")
 			_stack_pop()
@@ -638,9 +593,9 @@ func _parse_tags(tags_string: String):
 		
 		# Close everything.
 		elif tag == "/":
-			if added_stack and len(_stack) and not len(_stack[-1]):
-				_stack.pop_back()
-			while len(_stack):
+			if added_stack and len(STACK_STATE.stack) and not len(STACK_STATE.stack[-1]):
+				STACK_STATE.stack.pop_back()
+			while len(STACK_STATE.stack):
 				_stack_pop()
 			added_stack = false
 		
@@ -652,11 +607,11 @@ func _parse_tags(tags_string: String):
 		else:
 			if not added_stack:
 				added_stack = true
-				_stack.append([])
+				STACK_STATE.stack.append([])
 			_parse_tag(tag)
 	
-	if added_stack and len(_stack) and not len(_stack[-1]):
-		_stack.pop_back()
+	if added_stack and len(STACK_STATE.stack) and not len(STACK_STATE.stack[-1]):
+		STACK_STATE.stack.pop_back()
 
 func get_expression(ex: String, state2 := {}) -> Variant:
 	if not is_inside_tree():
@@ -756,56 +711,19 @@ func _parse_tag(tag: String):
 	
 	_parse_tag_info(tag_name, tag_info, tag)
 
-#func _passes_condition(cond: String, raw: String) -> bool:
-	#match cond:
-		#"if":
-			#var test := raw.split(" ", true, 1)[1]
-			#_state.condition = true if get_expression(test) else false
-			#_stack_push(T_CONDITION)
-			#
-		#"elif":
-			#if "condition" in _state and _state.condition == false:
-				#var test := raw.split(" ", true, 1)[1]
-				#_state.condition = true if get_expression(test) else false
-		#
-		#"else":
-			#if "condition" in _state:
-				#_state.condition = not _state.condition
-		#
-		#_:
-			#if not "condition" in _state or _state.condition == true:
-				#return true
-	#
-	#return false
 
-func _has_font(id: StringName) -> bool:
-	return id in font_cache
-
-func _get_font(id: StringName) -> Font:
-	if font_cache[id] is String:
-		font_cache[id] = load(font_cache[id])
-	return font_cache[id]
-
-func has_emoji_font() -> bool:
-	return "emoji_font" in font_cache
-
-func _get_emoji_font() -> Font:
-	return _get_font(&"emoji_font")
 
 func _parse_tag_info(tag: String, info: String, raw: String):
-	#if not _passes_condition(tag, raw):
-		#return
-	
 	# Font sizes.
 	if len(tag) and tag[0].is_valid_int():
-		_push_font_size(int(_state.font_size * _number(tag)))
+		_push_font_size(int(STACK_STATE.font_size * _number(tag)))
 		return
 	
 	# Emoji: old style.
 	if tag in Emoji.OLDIE:
-		if has_emoji_font():
-			push_font(_get_emoji_font())
-			push_font_size(ceil(_state.font_size * emoji_scale))
+		if FontHelper.has_emoji_font():
+			push_font(FontHelper.get_emoji_font())
+			push_font_size(ceil(STACK_STATE.font_size * emoji_scale))
 			add_text(Emoji.OLDIE[tag])
 			pop()
 			pop()
@@ -817,16 +735,16 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 	if tag.begins_with(":") and tag.ends_with(":"):
 		var emoji_name := tag.trim_suffix(":").trim_prefix(":")
 		if emoji_name in Emoji.NAMES:
-			if has_emoji_font():
-				push_font(_get_emoji_font(), ceil(_state.font_size * emoji_scale))
+			if FontHelper.has_emoji_font():
+				push_font(FontHelper.get_emoji_font(), ceil(STACK_STATE.font_size * emoji_scale))
 				add_text(Emoji.NAMES[emoji_name])
 				pop()
 			else:
 				append_text(Emoji.NAMES[emoji_name])
 			return
 	
-	# is a custom font?
-	if _has_font(tag):
+	# Is a custom font?
+	if FontHelper.has_font(tag):
 		_push_font(tag)
 		return
 	
@@ -845,14 +763,14 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 		"center": _push_paragraph(HORIZONTAL_ALIGNMENT_CENTER)
 		"fill": _push_paragraph(HORIZONTAL_ALIGNMENT_FILL)
 		
-		"dim": _push_color(_state.color.darkened(.33))
-		"dima": _push_color(Color(_state.color.darkened(.33), .5))
-		"lit": _push_color(_state.color.lightened(.33))
-		"lita": _push_color(Color(_state.color.lightened(.33), .5))
+		"dim": _push_color(STACK_STATE.color.darkened(.33))
+		"dima": _push_color(Color(STACK_STATE.color.darkened(.33), .5))
+		"lit": _push_color(STACK_STATE.color.lightened(.33))
+		"lita": _push_color(Color(STACK_STATE.color.lightened(.33), .5))
 		"hide": _push_color(Color.TRANSPARENT)
 		
 		# Shift the hue. default to 50%.
-		"hue": _push_color(hue_shift(_state.color, _number(info) if info else 0.5))
+		"hue": _push_color(hue_shift(STACK_STATE.color, _number(info) if info else 0.5))
 		
 		"meta": _push_meta(info)
 		"hint": _push_hint(info)
@@ -886,8 +804,8 @@ func _parse_tag_unused(tag: String, _info: String, _raw: String) -> bool:
 	return false
 
 func _add_text(t: String):
-	if _state.pipes:
-		var exp := "|".join([var_to_str(t)] + _state.pipes)
+	if STACK_STATE.pipes:
+		var exp := "|".join([var_to_str(t)] + STACK_STATE.pipes)
 		var got = get_expression(exp)
 		t = str(got)
 		append_text(t)
@@ -924,12 +842,12 @@ func _push_underline():
 	push_underline()
 
 func _push_paragraph(align :int):
-	_stack_push(T_PARAGRAPH, _state.align)
-	_state.align = align
+	_stack_push(T_PARAGRAPH, STACK_STATE.align)
+	STACK_STATE.align = align
 	push_paragraph(align)
 
 func _pop_paragraph(data):
-	_state.align = data
+	STACK_STATE.align = data
 	pop()
 
 func _push_effect(effect: String, info: String):
@@ -946,43 +864,43 @@ func _push_effect(effect: String, info: String):
 
 func _push_pipe(pipe: String):
 	_stack_push(T_PIPE)
-	_state.pipes.append(pipe)
+	STACK_STATE.pipes.append(pipe)
 
 func _pop_pipe():
-	_state.pipes.pop_back()
+	STACK_STATE.pipes.pop_back()
 
 func _push_font(font: String):
-	_stack_push(T_FONT, _state.font)
-	_state.font = font
-	push_font(_get_font(font))
+	_stack_push(T_FONT, STACK_STATE.font)
+	STACK_STATE.font = font
+	push_font(FontHelper.get_font(font))
 
 func _pop_font(last_font):
-	_state.font = last_font
+	STACK_STATE.font = last_font
 	pop()
 
 func _push_font_size(s: int):
 	s = clampi(s, MIN_FONT_SIZE, MAX_FONT_SIZE)
-	_stack_push(T_FONT_SIZE, _state.font_size)
-	_state.font_size = s
+	_stack_push(T_FONT_SIZE, STACK_STATE.font_size)
+	STACK_STATE.font_size = s
 	push_font_size(s)
 
 func _pop_font_size(last_size):
-	_state.font_size = last_size
+	STACK_STATE.font_size = last_size
 	pop()
 
 func _push_color_bg(clr: Color):
-	_stack_push(T_COLOR_BG, _state.color_bg)
-	_state.color = clr
+	_stack_push(T_COLOR_BG, STACK_STATE.color_bg)
+	STACK_STATE.color = clr
 	push_bgcolor(clr)
 
 func _push_color_fg(clr: Color):
-	_stack_push(T_COLOR_FG, _state.color_fg)
-	_state.color = clr
+	_stack_push(T_COLOR_FG, STACK_STATE.color_fg)
+	STACK_STATE.color = clr
 	push_bgcolor(clr)
 
 func _push_color(clr: Color):
-	_stack_push(T_COLOR, _state.color)
-	_state.color = clr
+	_stack_push(T_COLOR, STACK_STATE.color)
+	STACK_STATE.color = clr
 	push_color(clr)
 	
 	if outline_size > 0:
@@ -1015,20 +933,20 @@ func _pop_color(data):
 			# Outline size.
 			pop()
 	
-	_state.color = data
+	STACK_STATE.color = data
 
 func _pop_color_bg(data):
-	_state.color_bg = data
+	STACK_STATE.color_bg = data
 	pop()
 
 func _pop_color_fg(data):
-	_state.color_fg = data
+	STACK_STATE.color_fg = data
 	pop()
 
-# remove the last tag or set of tags.
+# Remove the last tag or set of tags.
 func _stack_pop():
-	if len(_stack):
-		var last = _stack.pop_back()
+	if len(STACK_STATE.stack):
+		var last = STACK_STATE.stack.pop_back()
 		for i in range(len(last)-1, -1, -1):
 			var type = last[i][0]
 			var data = last[i][1]
@@ -1041,20 +959,20 @@ func _stack_pop():
 				T_PIPE: _pop_pipe()
 				T_FONT: _pop_font(data)
 				T_FONT_SIZE: _pop_font_size(data)
-				T_CONDITION: _state.erase("condition")
+				T_CONDITION: STACK_STATE.erase("condition")
 				T_NONE, _:
 					if not nopop:
 						pop()
 			_tag_closed(type, data)
 
-# called when a tag is closed
+# Called when a tag is closed.
 func _tag_closed(_tag: int, _data: Variant):
 	pass
 
-# push a single tag to the last set of tags.
+# Push a single tag to the last set of tags.
 func _stack_push(item: int = -1, data: Variant = null, nopop: bool = false):
-	if len(_stack):
-		_stack[-1].append([item, data, nopop])
+	if len(STACK_STATE.stack):
+		STACK_STATE.stack[-1].append([item, data, nopop])
 
 func _replace_outside(s: String, head: String, tail: String, fr: Callable) -> String:
 	var parts := []
@@ -1083,7 +1001,7 @@ func _replace_outside(s: String, head: String, tail: String, fr: Callable) -> St
 	parts.append(str(fr.call(s)))
 	return "".join(parts)
 
-# similar to python style substr: s[1:-1]
+# Similar to python style substr: s[1:-1]
 func _part(s :String, begin: int=0, end=null) -> String:
 	if end == null:
 		end = len(s)
@@ -1092,22 +1010,6 @@ func _part(s :String, begin: int=0, end=null) -> String:
 		end = len(s) - end
 	
 	return s.substr(begin, end-begin)
-
-static func info_to_dict(info: String) -> Dictionary:
-	var out := {}
-	if "=" in info:
-		var re := RegEx.create_from_string(r'(?:"[^"]*"|\[[^\]]*\]|\([^)]*\)|\S)+')
-		for rm in re.search_all(info):
-			var kv = rm.get_string().split("=", true, 1)
-			out[kv[0]] = _str2var(kv[1])
-	return out
-
-# Allows setting .2 without erroring.
-static func _str2var(s: String) -> Variant:
-	# allow floats starting with a decimal: .5
-	if s.begins_with(".") and s.substr(1).is_valid_int():
-		return ("0" + s).to_float()
-	return str_to_var(s)
 
 func _has_effect(id:String) -> bool:
 	for e in custom_effects:
@@ -1123,8 +1025,18 @@ func _has_effect(id:String) -> bool:
 	return false
 
 func _get_character_random(index: int) -> int:
-	if index >= 0 and index < len(_random):
-		return _random[index]
+	var random: Array[int]
+	if has_meta(&"rand"):
+		random = get_meta(&"rand")
+	else:
+		seed(hash(get_parsed_text()))
+		for i in get_total_character_count():
+			random.append(randi())
+		set_meta(&"rand", random)
+	
+	if index >= 0 and index < len(random):
+		return random[index]
+	
 	return 0
 
 func _install_effect(id: String) -> bool:
@@ -1146,9 +1058,6 @@ func _install_effect(id: String) -> bool:
 	return false
 
 func _get_property_list():
-	if not font_cache:
-		_update_font_cache()
-	var fonts := "," + ",".join(font_cache.keys())
 	var props: Array[Dictionary]
 	_prop(props, &"bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
 	_prop_enum(props, &"effects", EffectsMode)
@@ -1157,13 +1066,13 @@ func _get_property_list():
 	_prop(props, &"emoji_scale", TYPE_FLOAT)
 	
 	_prop_group(props, "Font", "font_")
+	var fonts := "," + ",".join(FontHelper.cache.keys())
 	_prop(props, &"font", TYPE_STRING, PROPERTY_HINT_ENUM_SUGGESTION, fonts)
 	_prop(props, &"font_auto_setup", TYPE_BOOL)
 	_prop(props, &"font_size", TYPE_INT)
 	_prop(props, &"font_bold_weight", TYPE_FLOAT)
 	_prop(props, &"font_italics_slant", TYPE_FLOAT)
 	_prop(props, &"font_italics_weight", TYPE_FLOAT)
-	_prop(props, &"font_cache", TYPE_DICTIONARY)
 	
 	_prop_group(props, "Shadow", "shadow_")
 	_prop(props, &"shadow_enabled", TYPE_BOOL)
@@ -1249,6 +1158,22 @@ func _prop_node(list: Array[Dictionary], name: StringName, hint_string: String =
 
 func _prop(list: Array[Dictionary], name: StringName, type: int, hint: PropertyHint = PROPERTY_HINT_NONE, hint_string: String = ""):
 	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE, hint=hint, hint_string=hint_string })
+
+static func info_to_dict(info: String) -> Dictionary:
+	var out := {}
+	if "=" in info:
+		var re := RegEx.create_from_string(r'(?:"[^"]*"|\[[^\]]*\]|\([^)]*\)|\S)+')
+		for rm in re.search_all(info):
+			var kv = rm.get_string().split("=", true, 1)
+			out[kv[0]] = _str2var(kv[1])
+	return out
+
+# Allows setting .2 without erroring.
+static func _str2var(s: String) -> Variant:
+	# allow floats starting with a decimal: .5
+	if s.begins_with(".") and s.substr(1).is_valid_int():
+		return ("0" + s).to_float()
+	return str_to_var(s)
 
 static func is_style(s: String, style: String) -> bool:
 	return s.begins_with(style) and s.ends_with(style)

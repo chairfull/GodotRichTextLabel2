@@ -1,6 +1,6 @@
 @tool
-extends Resource
 class_name FontHelper
+extends RefCounted
 
 const BOLD_WEIGHT := 1.2
 const ITALICS_SLANT := 0.25
@@ -14,12 +14,48 @@ const PATTERN_M := ["-m", "_m", "-mono", "_mono"]
 const PATTERN_ALL := PATTERN_R + PATTERN_B + PATTERN_I + PATTERN_BI + PATTERN_M
 const FONT_FORMATS := ["otf", "ttf", "ttc", "otc", "woff", "woff2", "pfb", "pfm", "fnt", "font"]
 
+## Scans entire project now.
+## If you set it to res://fonts you could save a lot of time on large projects.
 const FONT_DIR := "res://"
 
+## TODO: Cache fonts here.
+static var cache: Dictionary
+
+static func _static_init() -> void:
+	if Engine.is_editor_hint():
+		var sig := EditorInterface.get_resource_filesystem().filesystem_changed
+		if not sig.is_connected(_filesystem_changed):
+			sig.connect(_filesystem_changed)
+
+static func _filesystem_changed():
+	update_cached_fonts()
+
+static func clear_cache():
+	cache.clear()
+
 ## Search the fonts folder for all fonts.
-static func get_font_paths(out: Dictionary, path := FONT_DIR) -> Dictionary:
+static func update_cached_fonts():
+	clear_cache()
+	_scan_for_fonts(cache)
+
+static func has_font(id: StringName) -> bool:
+	return id in cache
+
+static func get_font(id: StringName) -> Font:
+	if cache[id] is String:
+		cache[id] = load(cache[id])
+	return cache[id]
+
+static func has_emoji_font() -> bool:
+	return &"emoji_font" in cache
+
+static func get_emoji_font() -> Font:
+	return get_font(&"emoji_font")
+
+## Scans recursively, populating the dictionary with fonts it finds.
+static func _scan_for_fonts(dict: Dictionary, path := FONT_DIR) -> Dictionary:
 	if not DirAccess.dir_exists_absolute(FONT_DIR):
-		return {}
+		return dict
 	
 	var dir := DirAccess.open(path)
 	if dir:
@@ -27,26 +63,26 @@ static func get_font_paths(out: Dictionary, path := FONT_DIR) -> Dictionary:
 		var file_name := dir.get_next()
 		while file_name != "":
 			if dir.current_is_dir():
-				get_font_paths(out, path.path_join(file_name))
+				_scan_for_fonts(dict, path.path_join(file_name))
 			else:
 				if file_name.get_extension().to_lower() in FONT_FORMATS:
 					# Ignore emoji fonts, unless it is explicitly wanted.
 					if "emoji" in file_name.get_file().to_lower():
-						if not "emoji_font" in out:
-							out["emoji_font"] = path.path_join(file_name)
+						if not &"emoji_font" in dict:
+							dict[&"emoji_font"] = path.path_join(file_name)
 					else:
 						var full_path := path.path_join(file_name)
 						var id := full_path.get_file().get_basename()
 						for pt in PATTERN_ALL:
 							id = id.replace(pt, "")
-						out[id] = full_path
+						dict[id] = full_path
 				elif file_name.get_file().ends_with("emoji_font.tres"):
-					out["emoji_font"] = path.path_join(file_name)
+					dict[&"emoji_font"] = path.path_join(file_name)
 			
 			file_name = dir.get_next()
 	else:
 		push_error("No path: %s." % path)
-	return out
+	return dict
 
 static func _find_variant(fonts: Dictionary, head: String, tails: Array) -> String:
 	for tail in tails:
@@ -62,8 +98,8 @@ static func set_fonts(node: Node, fname: String, bold_weight := BOLD_WEIGHT, ita
 	else:
 		push_error("TODO")
 
-static func get_fonts(fname: String, bold_weight := BOLD_WEIGHT, italics_slant := ITALICS_SLANT, italics_weight := ITALICS_WEIGHT, font_paths := {}) -> Dictionary:
-	var fonts := font_paths if font_paths else get_font_paths({})
+static func get_fonts(fname: String, bold_weight := BOLD_WEIGHT, italics_slant := ITALICS_SLANT, italics_weight := ITALICS_WEIGHT, font_paths: Variant = null) -> Dictionary:
+	var fonts := font_paths if font_paths else _scan_for_fonts({})
 	var out := {}
 	
 	# Normal font.
