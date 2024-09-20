@@ -53,7 +53,8 @@ var effects: EffectsMode = EffectsMode.ON:
 var alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER:
 	set(x):
 		alignment = x
-		horizontal_alignment = x
+		# TODO: Godot 4.4 feature.
+		#horizontal_alignment = x
 		_redraw()
 
 ## Default font color.
@@ -379,7 +380,7 @@ func _set_bbcode():
 		color = color,
 		color_bg = null,
 		color_fg = null,
-		#align = alignment,
+		align = alignment,
 		font = font,
 		font_size = font_size,
 		opened = {},
@@ -442,13 +443,14 @@ func _preparse(btext :String) -> String:
 	if context_enabled:
 		btext = replace_context(btext)
 	
+	# TODO: Godot 4.4 feature.
+	#horizontal_alignment = alignment
 	# Primary alignment.
-	horizontal_alignment = alignment
-	#match alignment:
-		#1: btext = "[left]%s[]" % btext
-		#2: btext = "[center]%s[]" % btext
-		#3: btext = "[right]%s[]" % btext
-		#4: btext = "[fill]%s[]" % btext
+	match alignment:
+		HORIZONTAL_ALIGNMENT_LEFT: btext = "[left]%s[]" % btext
+		HORIZONTAL_ALIGNMENT_CENTER: btext = "[center]%s[]" % btext
+		HORIZONTAL_ALIGNMENT_RIGHT: btext = "[right]%s[]" % btext
+		HORIZONTAL_ALIGNMENT_FILL: btext = "[fill]%s[]" % btext
 	
 	# Markdown.
 	if markdown_enabled:
