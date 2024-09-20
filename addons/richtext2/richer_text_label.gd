@@ -27,14 +27,6 @@ enum {
 	T_FLAG_CAP, T_FLAG_UPPER, T_FLAG_LOWER,
 }
 
-#enum Align {
-	#NONE, ## No alignment tag added.
-	#LEFT, ## Autowraps string in "left" tags.
-	#CENTER, ## Autowraps string in "center" tags.
-	#RIGHT, ## Autowraps string in "right" tags.
-	#FILL, ## Autowraps string in "fill" tags.
-#}
-
 enum OutlineStyle {
 	OFF, ## No outline.
 	DARKEN, ## Outline will be darker than font color.
@@ -56,10 +48,11 @@ var effects: EffectsMode = EffectsMode.ON:
 		_redraw()
 
 ## Automatically align text.
-#var alignment: Align = Align.CENTER:
-	#set(x):
-		#alignment = x
-		#_redraw()
+var alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER:
+	set(x):
+		alignment = x
+		horizontal_alignment = x
+		_redraw()
 
 ## Default font color.
 var color := Color.WHITE:
@@ -241,12 +234,6 @@ var override_fitContent := true:
 	set(f):
 		override_fitContent = f
 		fit_content = f
-
-## Start centered.
-var override_horizontalAlignment := HORIZONTAL_ALIGNMENT_CENTER:
-	set(h):
-		override_horizontalAlignment = h
-		horizontal_alignment = h
 
 ## Some animations can go out of bounds. So override to disable clipping.
 var override_clipContents := false:
@@ -435,6 +422,7 @@ func _preparse(btext :String) -> String:
 		btext = replace_context(btext)
 	
 	# Primary alignment.
+	horizontal_alignment = alignment
 	#match alignment:
 		#1: btext = "[left]%s[]" % btext
 		#2: btext = "[center]%s[]" % btext
@@ -1125,7 +1113,7 @@ func _get_property_list():
 	var props: Array[Dictionary]
 	_prop(props, "bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
 	_prop_enum(props, "effects", EffectsMode)
-	#_prop_enum(props, "alignment", Align)
+	_prop(props, "alignment", TYPE_INT, PROPERTY_HINT_ENUM, "Left,Center,Right,Fill")
 	_prop(props, "color", TYPE_COLOR)
 	_prop(props, "emoji_scale", TYPE_FLOAT)
 	
