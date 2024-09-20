@@ -184,6 +184,8 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.6.1
+	- Removed Godot 4.4.dev feature explicitly typed dictionary.
 - 1.6
 	- Added `outline_color` to set the default outline color.
 	- Added outline modes:

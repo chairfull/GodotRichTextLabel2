@@ -204,7 +204,7 @@ var context_enabled := true
 ## For use with $property to display node properties. 
 var context_path: NodePath = ^"/root/State"
 ## Extra parameters that can be accessed in context.
-var context_state: Dictionary[StringName, Variant] = {}
+var context_state := {}
 ## Will attempt to call `to_rich_string()` on objects. Otherwise `.to_string()` is used.
 var context_rich_objects := true
 ## Will automatically add commas to integers: 1234 -> 1,234
