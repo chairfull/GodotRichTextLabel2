@@ -50,8 +50,8 @@ https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 
 |Tag|Description|Example|
 |:-:|-----------|:--:|
-|`^` `meta`|Executes an expression on the context node when pressed.<br>If it starts with `https://` it will load a browser.|`[^print("Hey!")]`|
-|`!` `hint`|Expression that becomes a hint popup.|`[!sword.get_hover_text()]`|
+|`!` `meta`|Executes an expression on the context node when pressed.<br>If it starts with `https://` it will load a browser.|`[!print("Hey!")]`|
+|`^` `hint`|Expression that becomes a hint popup.|`[^sword.get_hover_text()]`|
 |`dim`|Dims color by 33%.||
 |`lit`|Lightens color by 33%.|
 |`hue`|Shifts hue. 0 or 1 = no change. 0.5 = opposite end of spectrum.|`[hue 0.25]`|
@@ -185,8 +185,8 @@ func mood(s: String, npc_id: String):
 
 # Changes
 - 1.5
-	- Added `[^]` meta tag which calls an expression when pressed.
-	- Added `[!]` hint tag which calls an expression to display in a popup when hovered.
+	- Added `[!]` meta tag which calls an expression when pressed.
+	- Added `[^]` hint tag which calls an expression to display in a popup when hovered.
 	- Added custom tooltip for `hint` tags which now use the `RicherTextLabel`.
 	- Added `meta_auto_https` which opens urls in a browser.
 	- Added `fit_width` which will set `custom_minimum_size.x = get_content_width()`.

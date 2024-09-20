@@ -709,11 +709,12 @@ func _parse_tag(tag: String):
 		return
 	
 	# Meta.
-	if tag.begins_with("^"):
+	if tag.begins_with("!"):
 		_push_meta(tag.substr(1))
 		return
 	
-	if tag.begins_with("!"):
+	# Hint.
+	if tag.begins_with("^"):
 		_push_hint(tag.substr(1))
 		return
 	
