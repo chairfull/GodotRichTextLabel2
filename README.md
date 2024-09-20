@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.4.1` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
+`v1.4.2` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
 
 Two Nodes:
 - `RicherTextLabel`: Reduce effort needed to display state data and stylize it.
@@ -182,6 +182,8 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.4.2
+	- Fixed custom `RichTextEffects` not working on built projects.
 - 1.4.1
 	- Fixed variables not being resetable to defaults.
 - 1.4

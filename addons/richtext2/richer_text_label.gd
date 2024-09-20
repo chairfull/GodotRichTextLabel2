@@ -1207,9 +1207,10 @@ func _has_effect(id:String) -> bool:
 			return true
 	
 	for dir in [DIR_TEXT_EFFECTS, DIR_TEXT_TRANSITIONS]:
-		var path = dir.path_join("rte_%s.gd" % id)
-		if FileAccess.file_exists(path):
-			return true
+		for ext in ["gd", "gdc"]:
+			var path = dir.path_join("rte_%s.%s" % [id, ext])
+			if FileAccess.file_exists(path):
+				return true
 
 	return false
 
@@ -1225,13 +1226,14 @@ func _install_effect(id: String) -> bool:
 			return true
 	
 	for dir in [DIR_TEXT_EFFECTS, DIR_TEXT_TRANSITIONS]:
-		var path: String = dir.path_join("rte_%s.gd" % id)
-		if FileAccess.file_exists(path):
-			var effect: RichTextEffect = load(path).new()
-			effect.resource_name = id
-			effect.set_meta(&"rt", get_instance_id())
-			install_effect(effect)
-			return true
+		for ext in ["gd", "gdc"]:
+			var path: String = dir.path_join("rte_%s.%s" % [id, ext])
+			if FileAccess.file_exists(path):
+				var effect: RichTextEffect = load(path).new()
+				effect.resource_name = id
+				effect.set_meta(&"rt", get_instance_id())
+				install_effect(effect)
+				return true
 	
 	return false
 
