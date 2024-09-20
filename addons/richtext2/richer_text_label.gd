@@ -390,6 +390,8 @@ func _set_bbcode():
 		font_cache = {}
 		FontHelper.get_font_paths(font_cache)
 	
+	push_paragraph(alignment)
+	
 	if color != Color.WHITE:
 		_push_color(color)
 	
@@ -438,7 +440,7 @@ func uninstall_effects():
 	while len(custom_effects):
 		custom_effects.pop_back()
 
-func _preparse(btext :String) -> String:
+func _preparse(btext: String) -> String:
 	# Replace $ and {} properties.
 	if context_enabled:
 		btext = replace_context(btext)
@@ -446,12 +448,12 @@ func _preparse(btext :String) -> String:
 	# TODO: Godot 4.4 feature.
 	#horizontal_alignment = alignment
 	# Primary alignment.
-	match alignment:
-		HORIZONTAL_ALIGNMENT_LEFT: btext = "[left]%s[]" % btext
-		HORIZONTAL_ALIGNMENT_CENTER: btext = "[center]%s[]" % btext
-		HORIZONTAL_ALIGNMENT_RIGHT: btext = "[right]%s[]" % btext
-		HORIZONTAL_ALIGNMENT_FILL: btext = "[fill]%s[]" % btext
-	
+	#match alignment:
+		#HORIZONTAL_ALIGNMENT_LEFT: btext = "[left]%s[]" % btext
+		#HORIZONTAL_ALIGNMENT_CENTER: btext = "[center]%s[]" % btext
+		#HORIZONTAL_ALIGNMENT_RIGHT: btext = "[right]%s[]" % btext
+		#HORIZONTAL_ALIGNMENT_FILL: btext = "[fill]%s[]" % btext
+		
 	# Markdown.
 	if markdown_enabled:
 		# Hide bbcode with placeholders.

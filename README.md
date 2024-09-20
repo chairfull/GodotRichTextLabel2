@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.6.2` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
+`v1.6.3` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
 
 Two Nodes:
 - `RicherTextLabel`: Reduce effort needed to display state data and stylize it.
@@ -184,6 +184,8 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.6.3
+	- Fixed alignment error and used slightly more efficient method.
 - 1.6.2
 	- Removed Godot 4.4.dev feature: `horizontal_alignment` property.
 - 1.6.1
