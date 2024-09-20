@@ -2,11 +2,6 @@
 class_name RicherTextLabel
 extends RichTextLabel
 
-signal internal_pressed(variant: Variant)
-signal internal_right_pressed(variant: Variant)
-signal pressed(variant: Variant)
-signal right_pressed(variant: Variant)
-
 ## HACK: To allow _revert functions to work.
 static var DEFAULTS := RicherTextLabel.new()
 
@@ -32,13 +27,13 @@ enum {
 	T_FLAG_CAP, T_FLAG_UPPER, T_FLAG_LOWER,
 }
 
-enum Align {
-	NONE, ## No alignment tag added.
-	LEFT, ## Autowraps string in "left" tags.
-	CENTER, ## Autowraps string in "center" tags.
-	RIGHT, ## Autowraps string in "right" tags.
-	FILL, ## Autowraps string in "fill" tags.
-}
+#enum Align {
+	#NONE, ## No alignment tag added.
+	#LEFT, ## Autowraps string in "left" tags.
+	#CENTER, ## Autowraps string in "center" tags.
+	#RIGHT, ## Autowraps string in "right" tags.
+	#FILL, ## Autowraps string in "fill" tags.
+#}
 
 enum OutlineStyle {
 	OFF, ## No outline.
@@ -51,102 +46,6 @@ enum EffectsMode {
 	ON, ## Enable text effects.
 }
 
-func _get_property_list():
-	if not font_cache:
-		_update_font_cache()
-	var fonts := "," + ",".join(font_cache.keys())
-	var props: Array[Dictionary]
-	_prop(props, "bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
-	_prop_enum(props, "effects", EffectsMode)
-	_prop_enum(props, "alignment", Align)
-	_prop(props, "color", TYPE_COLOR)
-	_prop(props, "emoji_scale", TYPE_FLOAT)
-	
-	_prop_group(props, "Font", "font_")
-	_prop(props, "font", TYPE_STRING, PROPERTY_HINT_ENUM_SUGGESTION, fonts)
-	_prop(props, "font_auto_setup", TYPE_BOOL)
-	_prop(props, "font_size", TYPE_INT)
-	_prop(props, "font_bold_weight", TYPE_FLOAT)
-	_prop(props, "font_italics_slant", TYPE_FLOAT)
-	_prop(props, "font_italics_weight", TYPE_FLOAT)
-	_prop(props, "font_cache", TYPE_DICTIONARY)
-	
-	_prop_group(props, "Shadow", "shadow_")
-	_prop(props, "shadow_enabled", TYPE_BOOL)
-	_prop(props, "shadow_offset", TYPE_FLOAT)
-	_prop_range(props, "shadow_alpha")
-	_prop(props, "shadow_outline_size", TYPE_FLOAT)
-	
-	_prop_group(props, "Outline", "outline_")
-	_prop(props, "outline_size", TYPE_INT)
-	_prop_enum(props, "outline_mode", OutlineStyle)
-	_prop_range(props, "outline_adjust")
-	_prop_range(props, "outline_hue_adjust")
-	
-	_prop_group(props, "Nicer Quotes", "nicer_quotes_")
-	_prop(props, "nicer_quotes_enabled", TYPE_BOOL)
-	_prop(props, "nicer_quotes_format", TYPE_STRING)
-	
-	_prop_group(props, "Markdown", "markdown_")
-	_prop(props, "markdown_enabled", TYPE_BOOL)
-	_prop_subgroup(props, "Format", "markdown_format_")
-	_prop(props, "markdown_format_bold", TYPE_STRING)
-	_prop(props, "markdown_format_italics", TYPE_STRING)
-	_prop(props, "markdown_format_bold_italics", TYPE_STRING)
-	_prop(props, "markdown_format_highlight", TYPE_STRING)
-	_prop(props, "markdown_format_bold2", TYPE_STRING)
-	_prop(props, "markdown_format_italics2", TYPE_STRING)
-	_prop(props, "markdown_format_bold_italics2", TYPE_STRING)
-	
-	_prop_group(props, "Context", "context_")
-	_prop(props, "context_enabled", TYPE_BOOL)
-	_prop(props, "context_path", TYPE_NODE_PATH)
-	_prop(props, "context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
-	_prop(props, "context_rich_objects", TYPE_BOOL)
-	_prop(props, "context_rich_ints", TYPE_BOOL)
-	_prop(props, "context_rich_array", TYPE_BOOL)
-	
-	_prop_group(props, "Auto Style", "autostyle_")
-	_prop(props, "autostyle_numbers", TYPE_BOOL)
-	_prop(props, "autostyle_numbers_tag", TYPE_STRING)
-	_prop(props, "autostyle_numbers_pad_decimals", TYPE_BOOL)
-	_prop(props, "autostyle_numbers_decimals", TYPE_INT)
-	_prop(props, "autostyle_emojis", TYPE_BOOL)
-	
-	_prop_group(props, "Effect", "effect_")
-	_prop_range(props, "effect_weight") 
-
-	_prop_group(props, "Overrides", "override_")
-	_prop(props, "override_bbcodeEnabled", TYPE_BOOL)
-	_prop(props, "override_clipContents", TYPE_BOOL)
-	_prop(props, "override_fitContent", TYPE_BOOL)
-	
-	return props
-
-func _property_can_revert(property: StringName) -> bool:
-	return DEFAULTS.get(property) != null
-
-func _property_get_revert(property: StringName) -> Variant:
-	return DEFAULTS[property]
-
-func _prop_group(list: Array[Dictionary], name: String, hint_string: String):
-	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_GROUP, hint_string=hint_string })
-
-func _prop_subgroup(list: Array[Dictionary], name: String, hint_string: String):
-	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_SUBGROUP, hint_string=hint_string })
-
-func _prop_enum(list: Array[Dictionary], name: StringName, en: Variant):
-	_prop(list, name, TYPE_INT, PROPERTY_HINT_ENUM, ",".join(en.keys().map(func(s): return s.capitalize())))
-
-func _prop_range(list: Array[Dictionary], name: StringName, type: int = TYPE_FLOAT, minn = 0.0, maxx = 1.0):
-	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_RANGE, hint_string="%s,%s" % [minn, maxx] })
-
-func _prop_node(list: Array[Dictionary], name: StringName, hint_string: String = ""):
-	list.append({ name=name, type=TYPE_OBJECT, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_NODE_TYPE, hint_string=hint_string })
-
-func _prop(list: Array[Dictionary], name: StringName, type: int, hint: PropertyHint = PROPERTY_HINT_NONE, hint_string: String = ""):
-	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE, hint=hint, hint_string=hint_string })
-
 ## Text including bbcode to be converted.
 var bbcode := "": set=set_bbcode
 
@@ -157,10 +56,10 @@ var effects: EffectsMode = EffectsMode.ON:
 		_redraw()
 
 ## Automatically align text.
-var alignment: Align = Align.CENTER:
-	set(x):
-		alignment = x
-		_redraw()
+#var alignment: Align = Align.CENTER:
+	#set(x):
+		#alignment = x
+		#_redraw()
 
 ## Default font color.
 var color := Color.WHITE:
@@ -321,7 +220,15 @@ var autostyle_numbers_decimals := 2
 var autostyle_emojis := true
 
 ## Automatically open https:// links in a browser when clicked.
-var meta_auto_hhtps := true
+var meta_auto_https := true
+## Cursor to show when hovering a link.
+## Doesn't actually work at the moment.
+var meta_cursor := Input.CursorShape.CURSOR_POINTING_HAND
+
+## Will set custom_minimum_size.x and size.x to get_content_width()
+var fit_width := false
+## Added to the width.
+var fit_width_padding := 10
 
 ## Override so bbcode_enabled = true at init.
 var override_bbcodeEnabled := true:
@@ -335,6 +242,12 @@ var override_fitContent := true:
 		override_fitContent = f
 		fit_content = f
 
+## Start centered.
+var override_horizontalAlignment := HORIZONTAL_ALIGNMENT_CENTER:
+	set(h):
+		override_horizontalAlignment = h
+		horizontal_alignment = h
+
 ## Some animations can go out of bounds. So override to disable clipping.
 var override_clipContents := false:
 	set(c):
@@ -343,7 +256,7 @@ var override_clipContents := false:
 
 var _stack := []
 var _state := {}
-var _meta := {}
+@export_storage var _meta := {}
 var _meta_hovered: Variant = null
 var _expression_error := OK
 @export_storage var _random: Array[int] ## Used in the effects as a random offset.
@@ -352,6 +265,7 @@ func _init():
 	if not Engine.is_editor_hint():
 		meta_hover_started.connect(_meta_hover_started)
 		meta_hover_ended.connect(_meta_hover_ended)
+		meta_clicked.connect(_meta_clicked)
 
 func _notification(what: int) -> void:
 	match what:
@@ -369,45 +283,50 @@ func _notification(what: int) -> void:
 
 func _meta_hover_started(meta: Variant):
 	_meta_hovered = meta
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-
+	Input.set_default_cursor_shape(meta_cursor)
+	set_default_cursor_shape(meta_cursor as Control.CursorShape)
+	
 func _meta_hover_ended(meta: Variant):
 	_meta_hovered = null
-	mouse_default_cursor_shape = Control.CURSOR_ARROW
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	set_default_cursor_shape(Control.CURSOR_ARROW)
+
+func _meta_clicked(meta: Variant):
+	# Goto URL.
+	if _meta_hovered.begins_with("https://") and meta_auto_https:
+		OS.shell_open(_meta_hovered)
+	else:
+		var gott := get_expression(_meta_hovered)
+		# Refresh, just in case.
+		_set_bbcode()
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and _meta_hovered != null:
-		match event.button_index:
-			MOUSE_BUTTON_LEFT:
-				# Call a callable.
-				if _meta_hovered in _meta:
-					if _meta[_meta_hovered] is Callable:
-						_meta[_meta_hovered].call()
-					elif _meta_hovered.begins_with("_"):
-						internal_pressed.emit(_meta[_meta_hovered])
-					else:
-						pressed.emit(_meta[_meta_hovered])
-			
-				# Goto URL.
-				elif _meta_hovered.begins_with("https://") and meta_auto_hhtps:
-					OS.shell_open(_meta_hovered)
-				
-				else:
-					push_error("No meta url for '%s'. %s" % [_meta_hovered, _meta.keys()])
-				
-				get_viewport().set_input_as_handled()
-			
-			MOUSE_BUTTON_RIGHT:
-				if _meta_hovered in _meta:
-					if _meta[_meta_hovered] is Callable:
-						_meta[_meta_hovered].call()
-					elif _meta_hovered.begins_with("_"):
-						internal_right_pressed.emit(_meta[_meta_hovered])
-					else:
-						right_pressed.emit(_meta[_meta_hovered])
-				else:
-					push_error("No meta url for '%s'." % _meta_hovered)
-				get_viewport().set_input_as_handled()
+	if event is InputEventMouseMotion:
+		if _meta_hovered:
+			#set_default_cursor_shape(meta_cursor as Control.CursorShape)
+			#set_default_cursor_shape.call_deferred(meta_cursor as Control.CursorShape)
+			set_default_cursor_shape(Control.CURSOR_ARROW)
+			Input.set_default_cursor_shape(meta_cursor)
+		else:
+			#Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+			set_default_cursor_shape(Control.CURSOR_ARROW)
+
+func _make_custom_tooltip(for_text: String) -> Object:
+	var label := RicherTextLabel.new()
+	label.autostyle_numbers = false
+	label.context_enabled = context_enabled
+	label.context_path = context_path
+	label.bbcode = for_text
+	label.fit_width = true
+	# Strip bbcode tags.
+	#var re := RegEx.create_from_string(r"\[[^\]]+\]")
+	#var cleaned := for_text
+	#for rm in re.search_all(cleaned):
+		#cleaned = cleaned.replace(rm.strings[0], "")
+	## Shrink to minimum size.
+	#label.custom_minimum_size.x = ThemeDB.fallback_font.get_string_size(cleaned, label.font_size).x
+	#
+	return label
 
 func _update_color():
 	add_theme_color_override("font_outline_color", _get_outline_color(color))
@@ -417,7 +336,7 @@ func _redraw():
 	if is_inside_tree():
 		var frame := get_tree().get_frame()
 		if frame == _last_drawn_at:
-			print("Skip _redraw")
+			print("Skip _redraw.")
 			return
 		_last_drawn_at = frame
 	set_bbcode(bbcode)
@@ -445,15 +364,14 @@ func _update_font_cache():
 
 func _set_bbcode():
 	text = ""
-	#var t := Time.get_ticks_msec()
 	uninstall_effects()
-	#print(Time.get_ticks_msec() - t)
+	_meta.clear()
 	_stack.clear()
 	_state = {
 		color = color,
 		color_bg = null,
 		color_fg = null,
-		align = alignment,
+		#align = alignment,
 		font = font,
 		font_size = font_size,
 		opened = {},
@@ -471,8 +389,6 @@ func _set_bbcode():
 	if color != Color.WHITE:
 		_pop_color(Color.WHITE)
 	
-	var time := Time.get_ticks_msec()
-	
 	seed(hash(get_parsed_text()))
 	_random = []
 	for i in get_total_character_count():
@@ -484,6 +400,9 @@ func _set_bbcode():
 		if is_inside_tree():
 			await get_tree().process_frame
 		custom_minimum_size.y = get_content_height()
+		if fit_width:
+			custom_minimum_size.x = get_content_width() + fit_width_padding
+			size.x = custom_minimum_size.x
 
 func _resize_to_content():
 	autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -516,11 +435,11 @@ func _preparse(btext :String) -> String:
 		btext = replace_context(btext)
 	
 	# Primary alignment.
-	match alignment:
-		1: btext = "[left]%s[]" % btext
-		2: btext = "[center]%s[]" % btext
-		3: btext = "[right]%s[]" % btext
-		4: btext = "[fill]%s[]" % btext
+	#match alignment:
+		#1: btext = "[left]%s[]" % btext
+		#2: btext = "[center]%s[]" % btext
+		#3: btext = "[right]%s[]" % btext
+		#4: btext = "[fill]%s[]" % btext
 	
 	# Markdown.
 	if markdown_enabled:
@@ -789,6 +708,15 @@ func _parse_tag(tag: String):
 		_push_pipe(tag.substr(1))
 		return
 	
+	# Meta.
+	if tag.begins_with("^"):
+		_push_meta(tag.substr(1))
+		return
+	
+	if tag.begins_with("!"):
+		_push_hint(tag.substr(1))
+		return
+	
 	var tag_name: String
 	var tag_info: String
 	
@@ -809,27 +737,27 @@ func _parse_tag(tag: String):
 	
 	_parse_tag_info(tag_name, tag_info, tag)
 
-func _passes_condition(cond: String, raw: String) -> bool:
-	match cond:
-		"if":
-			var test := raw.split(" ", true, 1)[1]
-			_state.condition = true if get_expression(test) else false
-			_stack_push(T_CONDITION)
-			
-		"elif":
-			if "condition" in _state and _state.condition == false:
-				var test := raw.split(" ", true, 1)[1]
-				_state.condition = true if get_expression(test) else false
-		
-		"else":
-			if "condition" in _state:
-				_state.condition = not _state.condition
-		
-		_:
-			if not "condition" in _state or _state.condition == true:
-				return true
-	
-	return false
+#func _passes_condition(cond: String, raw: String) -> bool:
+	#match cond:
+		#"if":
+			#var test := raw.split(" ", true, 1)[1]
+			#_state.condition = true if get_expression(test) else false
+			#_stack_push(T_CONDITION)
+			#
+		#"elif":
+			#if "condition" in _state and _state.condition == false:
+				#var test := raw.split(" ", true, 1)[1]
+				#_state.condition = true if get_expression(test) else false
+		#
+		#"else":
+			#if "condition" in _state:
+				#_state.condition = not _state.condition
+		#
+		#_:
+			#if not "condition" in _state or _state.condition == true:
+				#return true
+	#
+	#return false
 
 func _has_font(id: StringName) -> bool:
 	return id in font_cache
@@ -846,8 +774,8 @@ func _get_emoji_font() -> Font:
 	return _get_font(&"emoji_font")
 
 func _parse_tag_info(tag: String, info: String, raw: String):
-	if not _passes_condition(tag, raw):
-		return
+	#if not _passes_condition(tag, raw):
+		#return
 	
 	# Font sizes.
 	if len(tag) and tag[0].is_valid_int():
@@ -945,23 +873,16 @@ func _add_text(t: String):
 		t = str(got)
 		append_text(t)
 		return
-		
-	add_text(t)
+	
+	add_text(t.replace("\\n", "\n"))
 
-func _push_meta(data: Variant):
-	if "^" in data:
-		var p = data.split("^", true, 1)
-		push_meta(p[0].strip_edges())
-		push_hint(p[1].strip_edges())
-		_stack_push(T_META)
-		_stack_push(T_HINT)
-	else:
-		push_meta(data.strip_edges())
-		_stack_push(T_META)
+func _push_meta(data: String):
+	push_meta(data.strip_edges(), RichTextLabel.META_UNDERLINE_NEVER)
+	_stack_push(T_META)
 
 func _push_hint(data: Variant):
 	_stack_push(T_HINT)
-	push_hint(data)
+	push_hint(str(get_expression(data)))
 
 func _push_bold():
 	_stack_push(T_BOLD)
@@ -1160,47 +1081,6 @@ static func _str2var(s: String) -> Variant:
 		return ("0" + s).to_float()
 	return str_to_var(s)
 
-#TODO
-# [if name == "Paul"]Hey Paul.[elif name != ""]Hey friend.[else]Who are you?[endif]
-#func _get_if_chain(s:String) -> Array:
-#	var p := s.split("]", true, 1)
-#	var elifs := [Array(p)]
-#
-#	while "[elif " in elifs[-1][-1]:
-#		p = elifs[-1][-1].split("[elif ", true, 1)
-#		elifs[-1][-1] = p[0]
-#		p = p[1].split("]", true, 1)
-#		elifs.append(Array(p))
-#
-#	if "[else]" in elifs[-1][-1]:
-#		p = elifs[-1][-1].split("[else]", true, 1)
-#		elifs[-1][-1] = p[0]
-#		elifs.append(["true", p[1]])
-#
-#	return elifs
-
-#func _replace_conditions(s: String):
-#	for test in _get_if_chain(s):
-#		if execute_expression(test[0]):
-#			return test[1]
-#	return ""
-
-func clear_meta():
-	_meta.clear()
-
-func do_clickable(label: String, data: Variant, hint := "", tags := "", is_internal := false) -> String:
-	var h = ("_%s" if is_internal else "-%s") % hash(data)
-	_meta[h] = data
-	if hint:
-		if tags:
-			return "[meta %s^%s;%s]%s[]" % [h, hint, tags, label]
-		else:
-			return "[meta %s^%s]%s[]" % [h, hint, label]
-	elif tags:
-		return "[meta %s;%s]%s[]" % [h, tags, label]
-	else:
-		return "[meta %s]%s[]" % [h, label]
-
 func _has_effect(id:String) -> bool:
 	for e in custom_effects:
 		if e.resource_name == id:
@@ -1236,6 +1116,108 @@ func _install_effect(id: String) -> bool:
 				return true
 	
 	return false
+
+func _get_property_list():
+	if not font_cache:
+		_update_font_cache()
+	var fonts := "," + ",".join(font_cache.keys())
+	var props: Array[Dictionary]
+	_prop(props, "bbcode", TYPE_STRING, PROPERTY_HINT_MULTILINE_TEXT)
+	_prop_enum(props, "effects", EffectsMode)
+	#_prop_enum(props, "alignment", Align)
+	_prop(props, "color", TYPE_COLOR)
+	_prop(props, "emoji_scale", TYPE_FLOAT)
+	
+	_prop_group(props, "Font", "font_")
+	_prop(props, "font", TYPE_STRING, PROPERTY_HINT_ENUM_SUGGESTION, fonts)
+	_prop(props, "font_auto_setup", TYPE_BOOL)
+	_prop(props, "font_size", TYPE_INT)
+	_prop(props, "font_bold_weight", TYPE_FLOAT)
+	_prop(props, "font_italics_slant", TYPE_FLOAT)
+	_prop(props, "font_italics_weight", TYPE_FLOAT)
+	_prop(props, "font_cache", TYPE_DICTIONARY)
+	
+	_prop_group(props, "Shadow", "shadow_")
+	_prop(props, "shadow_enabled", TYPE_BOOL)
+	_prop(props, "shadow_offset", TYPE_FLOAT)
+	_prop_range(props, "shadow_alpha")
+	_prop(props, "shadow_outline_size", TYPE_FLOAT)
+	
+	_prop_group(props, "Outline", "outline_")
+	_prop(props, "outline_size", TYPE_INT)
+	_prop_enum(props, "outline_mode", OutlineStyle)
+	_prop_range(props, "outline_adjust")
+	_prop_range(props, "outline_hue_adjust")
+	
+	_prop_group(props, "Nicer Quotes", "nicer_quotes_")
+	_prop(props, "nicer_quotes_enabled", TYPE_BOOL)
+	_prop(props, "nicer_quotes_format", TYPE_STRING)
+	
+	_prop_group(props, "Markdown", "markdown_")
+	_prop(props, "markdown_enabled", TYPE_BOOL)
+	_prop_subgroup(props, "Format", "markdown_format_")
+	_prop(props, "markdown_format_bold", TYPE_STRING)
+	_prop(props, "markdown_format_italics", TYPE_STRING)
+	_prop(props, "markdown_format_bold_italics", TYPE_STRING)
+	_prop(props, "markdown_format_highlight", TYPE_STRING)
+	_prop(props, "markdown_format_bold2", TYPE_STRING)
+	_prop(props, "markdown_format_italics2", TYPE_STRING)
+	_prop(props, "markdown_format_bold_italics2", TYPE_STRING)
+	
+	_prop_group(props, "Context", "context_")
+	_prop(props, "context_enabled", TYPE_BOOL)
+	_prop(props, "context_path", TYPE_NODE_PATH)
+	_prop(props, "context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
+	_prop(props, "context_rich_objects", TYPE_BOOL)
+	_prop(props, "context_rich_ints", TYPE_BOOL)
+	_prop(props, "context_rich_array", TYPE_BOOL)
+	
+	_prop_group(props, "Auto Style", "autostyle_")
+	_prop(props, "autostyle_numbers", TYPE_BOOL)
+	_prop(props, "autostyle_numbers_tag", TYPE_STRING)
+	_prop(props, "autostyle_numbers_pad_decimals", TYPE_BOOL)
+	_prop(props, "autostyle_numbers_decimals", TYPE_INT)
+	_prop(props, "autostyle_emojis", TYPE_BOOL)
+	
+	_prop_group(props, "Effect", "effect_")
+	_prop_range(props, "effect_weight")
+
+	_prop_group(props, "Meta", "meta_")
+	_prop(props, "meta_auto_https", TYPE_BOOL)
+	_prop(props, "meta_cursor", TYPE_INT, PROPERTY_HINT_ENUM, "Arrow,Ibeam,PointingHand,Cross,Wait,Busy,Drag,CanDrop,Forbidden,Vsize,Hsize,BdiagSize,FdiagSize,Move,Vsplit,Hsplit,Help")
+	
+	_prop_group(props, "Overrides", "override_")
+	_prop(props, "override_bbcodeEnabled", TYPE_BOOL)
+	_prop(props, "override_clipContents", TYPE_BOOL)
+	_prop(props, "override_fitContent", TYPE_BOOL)
+	_prop(props, "fit_width", TYPE_BOOL)
+	_prop(props, "fit_width_padding", TYPE_INT)
+	
+	return props
+
+func _property_can_revert(property: StringName) -> bool:
+	return DEFAULTS.get(property) != null
+
+func _property_get_revert(property: StringName) -> Variant:
+	return DEFAULTS[property]
+
+func _prop_group(list: Array[Dictionary], name: String, hint_string: String):
+	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_GROUP, hint_string=hint_string })
+
+func _prop_subgroup(list: Array[Dictionary], name: String, hint_string: String):
+	list.append({ name=name, type=TYPE_NIL, usage=PROPERTY_USAGE_SUBGROUP, hint_string=hint_string })
+
+func _prop_enum(list: Array[Dictionary], name: StringName, en: Variant):
+	_prop(list, name, TYPE_INT, PROPERTY_HINT_ENUM, ",".join(en.keys().map(func(s): return s.capitalize())))
+
+func _prop_range(list: Array[Dictionary], name: StringName, type: int = TYPE_FLOAT, minn = 0.0, maxx = 1.0):
+	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_RANGE, hint_string="%s,%s" % [minn, maxx] })
+
+func _prop_node(list: Array[Dictionary], name: StringName, hint_string: String = ""):
+	list.append({ name=name, type=TYPE_OBJECT, usage=PROPERTY_USAGE_DEFAULT, hint=PROPERTY_HINT_NODE_TYPE, hint_string=hint_string })
+
+func _prop(list: Array[Dictionary], name: StringName, type: int, hint: PropertyHint = PROPERTY_HINT_NONE, hint_string: String = ""):
+	list.append({ name=name, type=type, usage=PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE, hint=hint, hint_string=hint_string })
 
 static func is_style(s: String, style: String) -> bool:
 	return s.begins_with(style) and s.ends_with(style)
