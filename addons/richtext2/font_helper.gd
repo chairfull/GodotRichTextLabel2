@@ -23,7 +23,8 @@ static var cache: Dictionary
 
 static func _static_init() -> void:
 	if Engine.is_editor_hint():
-		var sig := EditorInterface.get_resource_filesystem().filesystem_changed
+		var editor_interface = Engine.get_singleton("EditorInterface")
+		var sig = editor_interface.get_resource_filesystem().filesystem_changed
 		if not sig.is_connected(_filesystem_changed):
 			sig.connect(_filesystem_changed)
 
