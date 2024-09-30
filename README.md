@@ -1,5 +1,5 @@
 # RichTextLabel2
-`v1.7.1` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
+`v1.8` [Demo](https://github.com/chairfull/GodotRichTextLabel2_Demo)
 
 Two Nodes:
 - `RicherTextLabel`: Reduce effort needed to display state data and stylize it.
@@ -73,6 +73,12 @@ https://github.com/user-attachments/assets/caf703ad-44d3-43b0-b4f9-56f513ac572f
 |`uwu`|Converts all R's and L's to W's.||
 |`wack`|Randomly animates rotation and scale for a wacky look.||
 |`woo`|Animates between upper and lower case, creating a sarcastic tone.||
+|`pulse`|[Built in](https://docs.godotengine.org/en/stable/tutorials/ui/bbcode_in_richtextlabel.html#pulse)||
+|`wave`|[Built in](https://docs.godotengine.org/en/stable/tutorials/ui/bbcode_in_richtextlabel.html#wave)||
+|`tornado`|[Built in](https://docs.godotengine.org/en/stable/tutorials/ui/bbcode_in_richtextlabel.html#tornado)||
+|`shake`|[Built in](https://docs.godotengine.org/en/stable/tutorials/ui/bbcode_in_richtextlabel.html#shake)||
+|`fade`|[Built in](https://docs.godotengine.org/en/stable/tutorials/ui/bbcode_in_richtextlabel.html#fade)||
+|`rainbow`|[Built in](https://docs.godotengine.org/en/stable/tutorials/ui/bbcode_in_richtextlabel.html#rainbow)||
 
 # RichTextAnimation
 
@@ -184,6 +190,9 @@ func mood(s: String, npc_id: String):
 
 
 # Changes
+- 1.8
+	- Fixed support for built in effects: `pulse` `wave` `tornado` `shake` `fade` `rainbow`
+	- Removed Godot 4.4.dev feature: `PROPERTY_HINT_DICTIONARY_TYPE`
 - 1.7.1
 	- Fixed `FontHelper` erroring on built projects.
 - 1.7

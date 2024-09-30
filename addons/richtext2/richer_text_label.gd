@@ -13,6 +13,7 @@ const DIR_TEXT_EFFECTS := "res://addons/richtext2/text_effects/effects"
 const DIR_TEXT_TRANSITIONS := "res://addons/richtext2/text_effects/anims"
 const MIN_FONT_SIZE := 8
 const MAX_FONT_SIZE := 512
+const BUILTIN_EFFECTS: PackedStringArray = ["pulse", "wave", "tornado", "shake", "fade", "rainbow"]
 
 enum {
 	T_NONE,
@@ -776,12 +777,12 @@ func _parse_tag_info(tag: String, info: String, raw: String):
 		"hint": _push_hint(info)
 		
 		_:
-			if not _has_effect(tag):
-				pass
+			if tag in BUILTIN_EFFECTS:
+				_push_effect(tag, info, true)
 			
 			# Custom effect.
-			if _has_effect(tag):
-				_push_effect(tag, info)
+			elif _has_effect(tag):
+				_push_effect(tag, info, false)
 			
 			elif not _parse_tag_unused(tag, info, raw):
 				append_text("[%s]" % raw)
@@ -849,15 +850,16 @@ func _push_paragraph(align :int):
 func _pop_paragraph(data):
 	STACK_STATE.align = data
 	pop()
-
-func _push_effect(effect: String, info: String):
+	
+func _push_effect(effect: String, info: String, builtin: bool):
 	if effects == EffectsMode.OFF:
 		return
 	
 	if effects == EffectsMode.OFF_IN_EDITOR and Engine.is_editor_hint():
 		return
 	
-	_install_effect(effect)
+	if not builtin:
+		_install_effect(effect)
 	_stack_push(T_EFFECT, effect)
 	var effect_text := ("[%s]" % effect) if info == "" else ("[%s %s]" % [effect, info])
 	append_text(effect_text)
@@ -1107,7 +1109,9 @@ func _get_property_list():
 	_prop_group(props, "Context", "context_")
 	_prop(props, &"context_enabled", TYPE_BOOL)
 	_prop(props, &"context_path", TYPE_NODE_PATH)
-	_prop(props, &"context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
+	# TODO: Godot 4.4
+	#_prop(props, &"context_state", TYPE_DICTIONARY, PROPERTY_HINT_DICTIONARY_TYPE, "StringName;Variant")
+	_prop(props, &"context_state", TYPE_DICTIONARY)
 	_prop(props, &"context_rich_objects", TYPE_BOOL)
 	_prop(props, &"context_rich_ints", TYPE_BOOL)
 	_prop(props, &"context_rich_array", TYPE_BOOL)
