@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="RicherTextParserRegex" load_steps=2 format=3 uid="uid://ilwb71uy2den"]
+
+[ext_resource type="Script" uid="uid://mpbek0u0mm3a" path="res://addons/richer_text/scripts/rtxt_parser_regex.gd" id="1_jyaes"]
+
+[resource]
+script = ExtResource("1_jyaes")
+id = &"table"
+regex = "(?m)^\\s*\\|[^\\n|]*?(?:\\|[^\\n|]*)+\\|?\\s*\\r?\\n\\s*\\|\\s*[ :\\-]+(?:\\|\\s*[ :\\-]+)+\\|?\\s*\\r?\\n(?:\\s*\\|[^\\n|]*?(?:\\|[^\\n|]*)+\\|?\\s*\\r?\\n?)*"
+expression = "var split := func(s: String) -> Array: return Array(s.substr(1, s.length()-2).split(\"|\")).map(func(s): return s.strip_edges())
+var parts := rm.strings[0].split(\"\\n\")
+var cols: Array = split.call(parts[0])
+var algn: Array = split.call(parts[1]).map(func(s): return \"[center]%s[/center]\" if s.begins_with(\":\") and s.ends_with(\":\") else \"[right]%s[/right]\" if s.ends_with(\":\") else \"%s\")
+var cells: Array
+for i in cols.size():
+	cells.append(\"[cell][b]%s[/b][/cell]\" % (algn[i] % cols[i]))
+for i in range(2, parts.size()):
+	var col: PackedStringArray = split.call(parts[i])
+	for j in col.size():
+		cells.append(\"[cell]%s[/cell]\" % (algn[j] % col[j]))
+\"[table=%s]%s[/table]\" % [cols.size(), \"\".join(cells)]"
+comment = "Got the RegEx from ChatGPT, but it seems to work lol."
+test_input = "|a|b|c|
+|--:|-|-|
+|1|2|3|"
+test_output = "[table=3][cell][b][right]a[/right][/b][/cell][cell][b]b[/b][/cell][cell][b]c[/b][/cell][cell][right]1[/right][/cell][cell]2[/cell][cell]3[/cell][/table]"
+metadata/_custom_type_script = "uid://mpbek0u0mm3a"

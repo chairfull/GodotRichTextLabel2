@@ -1,0 +1,10 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+ignore/
+icon.svg
+icon.svg.import
+project.godot
+.editorconfig
+.gitattributes

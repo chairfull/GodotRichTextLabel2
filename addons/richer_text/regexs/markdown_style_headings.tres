@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RichTextParserRegex" load_steps=2 format=3 uid="uid://dnbmttpaufika"]
+
+[ext_resource type="Script" uid="uid://mpbek0u0mm3a" path="res://addons/richer_text/scripts/rtxt_parser_regex.gd" id="1_hglcj"]
+
+[resource]
+script = ExtResource("1_hglcj")
+id = &"headings"
+regex = "(?m)^\\s{0,3}(#{1,6})[ \\t]+([^\\r\\n]+?)\\s*#*\\s*$"
+expression = "\"[h%s]%s]\" % [rm.strings[1].length(), rm.strings[2]]"
+comment = "Detects markdown style headings:
+# Heading 1
+## Heading 2
+will output
+[h1]Heading 1]
+[h2]Heading 2]"
+metadata/_custom_type_script = "uid://mpbek0u0mm3a"
