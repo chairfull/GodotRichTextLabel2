@@ -3,6 +3,7 @@
 /android/
 
 ignore/
+assets/
 icon.svg
 icon.svg.import
 project.godot

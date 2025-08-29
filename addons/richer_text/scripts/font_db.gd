@@ -3,6 +3,7 @@ class_name FontDB extends Resource
 ## Font Database scans for fonts so they can be easily used.
 
 const EXT_FONT: PackedStringArray = ["otf", "ttf", "ttc", "otc", "woff", "woff2", "pfb", "pfm", "fnt", "font"]
+const PATH_DEFAULT_DB := "res://assets/font_db.tres"
 
 @export_dir var parent_dir := "res://" ## Directory to start scanning from.
 @export var paths: Dictionary[StringName, String] ## Paths organized by a nickname.
@@ -13,14 +14,22 @@ const EXT_FONT: PackedStringArray = ["otf", "ttf", "ttc", "otc", "woff", "woff2"
 @export_tool_button("Find Fonts") var _tool_button := find_fonts
 
 static func get_default() -> FontDB:
-	if FileAccess.file_exists("res://assets/font_db.tres"):
-		return load("res://assets/font_db.tres")
-	return null
+	if Engine.is_editor_hint():
+		if not FileAccess.file_exists(PATH_DEFAULT_DB):
+			if not DirAccess.dir_exists_absolute(PATH_DEFAULT_DB.get_base_dir()):
+				DirAccess.make_dir_recursive_absolute(PATH_DEFAULT_DB.get_base_dir())
+			var fontdb := FontDB.new()
+			fontdb.find_fonts()
+			var err := ResourceSaver.save(fontdb, PATH_DEFAULT_DB)
+			if err != OK:
+				push_error("FontDB: ", error_string(err))
+	return load(PATH_DEFAULT_DB)
 
 func get_nice_names() -> PackedStringArray:
 	return paths.keys().map(func(s: String): return s.capitalize())
 
 func get_font(id: StringName) -> Font:
+	id = _sanitise(id)
 	return load(paths[id]) if id in paths else ThemeDB.fallback_font
 
 func find_fonts():
@@ -34,8 +43,10 @@ func find_fonts():
 func _sanitise(id: String) -> StringName:
 	var out := ""
 	for c in id.to_snake_case():
-		if c in "_abcdefghijklmnopqrstuvwxyz0123456789":
+		if c in "abcdefghijklmnopqrstuvwxyz0123456789":
 			out += c
+		elif out and out[-1] != "-":
+			out += "-"
 	return out
 	
 func _scan_dir(dir: String):

@@ -78,11 +78,7 @@ var _waypoints: Dictionary[int, String]
 @export_dir var custom_effects_dir := "res://assets/richer_text_effects"
 
 #region Font
-var font_db: FontDB:
-	set(f):
-		if not f:
-			f = FontDB.get_default()
-		font_db = f
+var font_db: FontDB = FontDB.get_default()
 
 ## Primary font to use.
 var font_default: StringName:
@@ -241,9 +237,15 @@ var link_audio_path_tooltip_unhovered := "" ## Sound played on tooltip unhovered
 
 ## Try to find a default parser resource in the "res://assets/" folder.
 static func get_default() -> RTxtParser:
-	if FileAccess.file_exists(PATH_DEFAULT_PARSER):
-		return load(PATH_DEFAULT_PARSER)
-	return null
+	if Engine.is_editor_hint():
+		if not FileAccess.file_exists(PATH_DEFAULT_PARSER):
+			if not DirAccess.dir_exists_absolute(PATH_DEFAULT_PARSER.get_base_dir()):
+				DirAccess.make_dir_recursive_absolute(PATH_DEFAULT_PARSER.get_base_dir())
+			var parser := RTxtParser.new()
+			var err := ResourceSaver.save(parser, PATH_DEFAULT_PARSER)
+			if err != OK:
+				push_error("Parser: ", error_string(err))
+	return load(PATH_DEFAULT_PARSER)
 
 func parse(input: String, context_node: Node = null, links: Dictionary[int, String] = {}) -> String:
 	_context_node = context_node

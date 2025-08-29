@@ -9,22 +9,22 @@ Main Changes:
 	- Interactive text using `=` prefix: `[=start]Start Game]\n[=set]Settings]\n[=q]Quit]`
 	- [Emojis and images](#emojis-and-images) share simple pattern: `Eating an ~apple ~smile. Icon: ~icon`.
 - Single node `RicherTextLabel`. Can take [modifiers](#modifiers) like:
-	- [`RicherTextAnimation`](#animation) for animating by character, world, or line.
-	- [`RicherTextScatter`](#scatter) for displaying each line at a different position on screen.
-	- [`RicherTextCurve`](#curve) for aligning text to a `Path2D`.
-	- [`RicherTextTicker`](#ticker) for creating news tickers that pan across the screen.
+	- [`Animation`](#animation) for animating by character, world, or line.
+	- [`Scatter`](#scatter) for displaying each line at a different position on screen.
+	- [`Curve`](#curve) for aligning text to a `Path2D`.
+	- [`Ticker`](#ticker) for creating news tickers that pan across the screen.
 - Hover animations, sounds, tooltips and more for clickable text.
 	- Animate text on hover, unhover, click, and right_click.
 	- Sounds play on hover, unhover, click, and right_click.
 - Optionally remove tags the old way: `[b;blue]Name[/blue] Description.`
-- [`RicherTextParser`](#parser) resource makes it easier for all labels in a project to share settings.
+- [`Parser`](#parser) resource makes it easier for all labels in a project to share settings.
 - Uses `@` instead of `$` for getting [context properties](#context), since `$` is commonly used for dialogue.
 - Potentially faster as it no longer uses `push_` `pop()` calls. (Haven't actually tested.)
 - Images `[img]` can finally have their color/alpha animated by effects, making them usable in transition animations.
 - `bbcode_head` that always get's prefixed when you call `bbcode = "text"`.
 
 # Parser
-The `RicherTextParser` `Resource` makes reusing settings across `RicherTextLabel`s far easier.
+The `Parser` `Resource` makes reusing settings across `RicherTextLabel`s far easier.
 
 ## Context
 A Node that will be used when replacing `@context_vars` or calling `@context_functions(true)`.
@@ -150,7 +150,7 @@ The `divider` key can be any kind of unicode or emoji to divide stories.
 
 Set `clip_children = true` for best effect.
 
-## LinkList
+## Link List
 Treats each new line as a link.
 
 Connect to `link_clicked` `link_right_clicked` `link_hovered` `link_unhovered`.

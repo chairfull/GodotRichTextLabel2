@@ -12,7 +12,7 @@ class TooltipObject extends RefCounted:
 	func _to_string() -> String:
 		return "Tooltip:%s(%s)" % [id, tooltip_text]
 
-@export var parser: RTxtParser: set=set_parser
+@export var parser: RTxtParser = RTxtParser.get_default(): set=set_parser
 @export var bbcode_head: String: set=set_bbcode_head ## Will always prefix the bbcode.
 @export_custom(PROPERTY_HINT_EXPRESSION, "") var bbcode: String: set=set_bbcode
 var _image_keys: PackedInt32Array ## Allow us to change image color & alpha with effects.
