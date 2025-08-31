@@ -349,12 +349,12 @@ func set_parser(p: RTxtParser):
 		p = RTxtParser.get_default()
 	var last_parser := parser
 	parser = p
-	if p and parser != last_parser:
-		p.started.connect(_started)
-		p.install_effect.connect(_install_effect)
-		p.changed_font.connect(_changed_font)
-		p.changed_font_size.connect(_changed_font_size)
-		p.changed_outline.connect(_changed_outline)
+	if p and not p.started.is_connected(_started):
+		p.started.connect(_started, CONNECT_PERSIST)
+		p.install_effect.connect(_install_effect, CONNECT_PERSIST)
+		p.changed_font.connect(_changed_font, CONNECT_PERSIST)
+		p.changed_font_size.connect(_changed_font_size, CONNECT_PERSIST)
+		p.changed_outline.connect(_changed_outline, CONNECT_PERSIST)
 	_changed_font()
 	_changed_font_size()
 	_changed_shadow()

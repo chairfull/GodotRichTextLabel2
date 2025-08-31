@@ -3,14 +3,20 @@ class_name RTxtCurver extends RTxtModifier
 
 @export_node_path("Path2D") var curve: NodePath
 @export_range(0.0, 1.0, 0.01) var offset := 0.0 ## Offset along the curve. Curve must be larger than text.
-@export var rotate := true ## Rotate with the curve.
+@export var rotate := true ## Rotate with the curve normal.
+@export var skew := true ## Skew with the curve normal.
 @export_range(0, 8) var increase_spaces := 0 ## Add more spaces between text.
 var _sizes: PackedVector2Array
 
 func _preparse(bbcode: String) -> String:
+	label.fit_content = true
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.clip_contents = false
+	
 	if increase_spaces > 0:
 		bbcode = bbcode.replace(" ", " ".repeat(1+increase_spaces))
-	return "[curve id=%s]%s]" % [get_instance_id(), bbcode]
+	
+	return "[curve id=%s]%s]" % [get_instance_id(), super(bbcode)]
 
 func _finished():
 	super()

@@ -22,6 +22,7 @@ Main Changes:
 - Potentially faster as it no longer uses `push_` `pop()` calls. (Haven't actually tested.)
 - Images `[img]` can finally have their color/alpha animated by effects, making them usable in transition animations.
 - `bbcode_head` that always get's prefixed when you call `bbcode = "text"`.
+- `[sin]` has applies a skew, for added juiciness.
 
 # Parser
 The `Parser` `Resource` makes reusing settings across `RicherTextLabel`s far easier.

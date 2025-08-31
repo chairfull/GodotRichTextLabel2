@@ -117,6 +117,9 @@ func _update() -> bool:
 		cfx.transform = cfx.transform.interpolate_with(a.transform, amount_clicked)
 		cfx.offset = lerp(cfx.offset, a.offset, amount_clicked)
 	
+	if not label:
+		return false #????
+	
 	# HACK: Record which character is part of which link.
 	var link_data := label._link_regions
 	if not link_index in link_data:

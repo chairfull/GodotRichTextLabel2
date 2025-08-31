@@ -19,4 +19,6 @@ func _update():
 		#position.y += coffset.y
 		if curve.rotate:
 			rotate(trans.get_rotation())
+		if curve.skew:
+			skew = trans.get_rotation()
 	return true
