@@ -166,3 +166,24 @@ Load|Continue from previous game
 Settings|Adjust the visuals and audio
 Quit|Don't ever click this
 ```
+
+# RTxtEffect
+`RTxtEffect` extends `RichTextEffects` and is meant to make creating effects easier by supplying a ton of wrappers and helper functions.
+Please override `_update()` instead of `_process_effect(char_fx: RichTextEffect)`.
+
+It kind of works like a shader, but instead of a pixel we are working on a string character.
+
+- `delta` Animation delta, used by `RTxtAnimator`.
+- `cursor_delta` Distance from character to cursor. Makes text feel more alive/responsive.
+- `center_delta` Distance from character to center of label. Useful to make text expand/contract on hover.
+- `size` Size of current character.
+- `chr` Actual character string. Can be used to change the character, but this may look bad if not a monospaced font.
+- `chr_next`, `chr_prev` String character that comes before or after the current one.
+- `rnd()` Returns value between 0.0 & TAU. Useful as an offset.
+- `rnd_smooth()` Animated value between -1.0 & 1.0 that uses the `elapsed_time`. Useulf for animating with noise.
+- `rnd_smoothu()` Same as above, but unsigned 0.0 - 1.0.
+- `rnd_noise()` An attempt at lerping between no noise and full noise.
+- `get_int(id)` Returns tag property as an int, or a default.
+- `get_float(id)` Returns tag property as a float, or a default.
+- `get_bool(id)` Returns tag property as a bool, or a default.
+- `get_instance(id="id")` Returns tag property as an Object (converting from an instance_id), or a default.

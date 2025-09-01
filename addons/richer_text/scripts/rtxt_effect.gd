@@ -42,7 +42,7 @@ var weight: float:
 	get: return _juicy.effect_weight if _juicy else label.effect_weight if label else 1.0
 
 var font: RID:
-	get: return _juicy.font.get_rid() if _juicy else _char_fx.font
+	get: return _juicy.font.get_rids()[0] if _juicy else _char_fx.font
 
 ## Ideally effects are scaled to this.
 var font_size: int:
@@ -64,6 +64,7 @@ var color: Color:
 		else:
 			label.update_image(_char_fx.range.x, RichTextLabel.UPDATE_COLOR, null, 0, 0, c)
 
+## Get/set character transparency.
 var alpha: float:
 	get: return color.a
 	set(a): color = Color(color, a)
@@ -77,24 +78,28 @@ var index: int:
 var absolute_index: int:
 	get: return _char_fx.range.x
 
+## Get/set actual character string. (Changing this isn't ideal for non-monospaced fonts.)
 var chr: String:
 	get: return text[absolute_index]
 	set(c):
 		var text_server = TextServerManager.get_primary_interface()
-		_char_fx.glyph_index = text_server.font_get_glyph_index(font, font_size, c.unicode_at(0), 0)
+		var new_glyph := text_server.font_get_glyph_index(font, font_size, c.unicode_at(0), 0)
+		_char_fx.glyph_index = new_glyph
 
+## Previous character in the text.
 var chr_prev: String:
 	get: return text[absolute_index-1] if absolute_index-1 > 0 else ""
 
+## Next character in the text.
 var chr_next: String:
 	get: return text[absolute_index+1] if absolute_index+1 < text.length() else ""
 
+## Size of this specific character. Use label.size for 
 var size: Vector2:
 	get:
 		if _juicy: return _juicy._rects[index].size
 		if is_image(): return Vector2(font_size, font_size)
 		var ts := TextServerManager.get_primary_interface()
-		#assert(not font)
 		return ts.font_get_glyph_size(font, Vector2i(font_size, 0), _char_fx.glyph_index)
 
 var transform: Transform2D:
@@ -126,7 +131,7 @@ func skew_pivoted(sk: float, pivot: Vector2):
 	transform *= Transform2D(Vector2(1.0, 0.0), Vector2(tan(sk), 1.0), Vector2.ZERO)
 	transform *= Transform2D.IDENTITY.translated(p)
 
-## Prefer using position.
+## Prefer using position or transform.origin.
 var offset: Vector2:
 	get: return _char_fx.offset
 	set(o): _char_fx.offset = o
@@ -138,6 +143,31 @@ var delta: float:
 			return anim._alphas[_char_fx.range.x]
 		return 1.0
 
+## Local mouse position.
+## This function seems slow, so we attempt to cache it.
+## It might not work if the first character in an effect doesn't try to access it.
+var mouse: Vector2:
+	get:
+		if _juicy: return _juicy._smoothed_mouse_position
+		if index == 0:
+			mouse = label.get_local_mouse_position()
+		return mouse
+
+## Distance from character to the cursor.
+var cursor_delta: Vector2:
+	get:
+		var off := (position - mouse)
+		off.x = (off.x / font_size) / (1 + abs(off.x / font_size))
+		off.y = (off.y / font_size) / (1 + abs(off.y / font_size))
+		return off
+
+## Distance from character to the center of the label.
+var center_delta: Vector2:
+	get:
+		if _juicy: return (position - _juicy.size * .5) / font_size
+		return (position - label.size * .5) / font_size
+
+## Elapsed time. Useful for animations.
 var time: float:
 	get: return _juicy._anim if _juicy else _char_fx.elapsed_time
 
@@ -154,6 +184,7 @@ func rotate(angle: float):
 func _update() -> bool:
 	return true
 
+## Prefer overriding _update().
 func _process_custom_fx(char_fx: CharFXTransform) -> bool:
 	_char_fx = char_fx
 	return _update()
@@ -182,14 +213,14 @@ func rnd_smooth(speed := 1.0, freq := 1.0, seed := 0.0) -> float:
 	var t := time * speed
 	return sin(t + phase) * 0.5 + sin(t * 1.73 + phase * 2.31) * 0.5
 
+## Unsigned version: 0.0 to 1.0
+func rnd_smoothu(speed := 1.0, seed := 0.0) -> float:
+	return rnd_smooth(speed, seed) * .5 + .5
+
 ## Lerp between a basic sin() and a noise()
 func rnd_noise(amount: float, speed := 1.0, freq := 1.0, seed := 0.0) -> float:
 	var base := sin(time * speed + (index * freq + seed) * 12.9898)
 	return lerpf(base, rnd_smooth(speed, freq, seed), amount)
-
-## Unsigned version: 0.0 to 1.0
-func rnd_smoothu(speed := 1.0, seed := 0.0) -> float:
-	return rnd_smooth(speed, seed) * .5 + .5
 
 ## Returns the last characters transformation so we can use it for end of text animations.
 ## Should be applied last (so in an animation effect)
@@ -205,8 +236,6 @@ func _send_transform_back():
 		var off_y := ts.font_get_ascent(font, fsize) - ts.font_get_descent(font, fsize)
 		anim._char_size[index] = Vector2(off_x, off_y)
 		anim._transforms[index] = _char_fx.transform
-
-
 
 func cycle_colors(colors: PackedColorArray, t: float, default := Color.WHITE) -> Color:
 	var n = colors.size()

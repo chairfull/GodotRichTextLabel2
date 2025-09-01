@@ -1,15 +1,18 @@
 @tool
-extends RTxtEffect
+class_name RTE_Sin extends RTxtEffect
 ## Sine wave effect.
 
-## [sin]]
+## [sin sin=float speed=float freq=float skew=float][/sin]
 var bbcode := "sin"
 
+@export var sin_scale := 1.0
+@export var freq := 0.5
+@export var speed := 1.0
+@export var skew_scale := 0.2
+
 func _update() -> bool:
-	var sn := get_float("sin", 1.0)
-	var fr := get_float("freq", 0.5)
-	var sp := get_float("speed", 1.0)
-	var t := time * 12.0 * sp + range.x * fr
-	offset.y += weight * sin(t) * font_size * .1 * sn
-	skew = cos(t) * .1
+	var t := time * get_float(&"speed", speed)
+	t += range.x * get_float(&"freq", freq) * font_size
+	position.y += sin(t) * font_size * .25 * get_float(&"sin", sin_scale) * weight
+	skew = cos(t) * get_float(&"skew", skew_scale) * weight
 	return true

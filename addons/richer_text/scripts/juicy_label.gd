@@ -40,7 +40,7 @@ enum EffectState { DEFAULT, HOVERED, CLICKED }
 @export var disable_effects := false ## Disables any effects. Debug.
 
 var _anim := 0.0
-var _mouse_pos := Vector2.ZERO
+var _smoothed_mouse_position := Vector2.ZERO
 var _rects: Array[Rect2]
 var _tween: Tween
 var _tween_amount := 0.0
@@ -91,7 +91,7 @@ func set_effect_state(s: EffectState):
 
 func _process(delta: float) -> void:
 	_anim += delta
-	_mouse_pos = lerp(_mouse_pos, get_local_mouse_position(), 10.0 * delta)
+	_smoothed_mouse_position = _smoothed_mouse_position.lerp(get_local_mouse_position(), 10.0 * delta)
 	queue_redraw()
 
 func _get_effect(s: EffectState) -> RTxtEffect:
@@ -160,6 +160,7 @@ func _draw() -> void:
 				draw_string(font, baseline, text[i], HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, mix_color)
 			return
 	else:
+		var text_server = TextServerManager.get_primary_interface()
 		var effect := _get_effect(effect_state)
 		if effect:
 			effect._juicy = self
@@ -177,7 +178,7 @@ func _draw() -> void:
 				cfx.range = Vector2(i, 0)
 				cfx.transform = Transform2D(0.0, Vector2.ONE, 0.0, rect.position + half_size)
 				cfx.color = color
-				
+				cfx.glyph_index = text_server.font_get_glyph_index(font.get_rids()[0], font_size, text[i].unicode_at(0), 0)
 				var outline_states := outlines.map(func(o: RTxtOutline):
 					return {} if not o else { style=o.style, color=o.color, position=o.position, size=o.size, rotation=o.rotation, skew=o.skew, scale=o.scale })
 				cfx.set_meta(&"outlines", outlines)
@@ -196,21 +197,23 @@ func _draw() -> void:
 					var half_size := rect.size * .5
 					var outline: Dictionary = cfx.get_meta(&"outline_states")[o]
 					var off: Vector2 = outline.position
+					var chr := char(text_server.font_get_char_from_glyph_index(font.get_rids()[0], font_size, cfx.glyph_index))
 					draw_set_transform_matrix(cfx.transform * Transform2D(outline.rotation, outline.scale, outline.skew, outline.position))
 					if outline.style != RTxtOutline.Style.OUTLINE:
-						draw_string(font, baseline - half_size, text[i], HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.color)
+						draw_string(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.color)
 					if outline.style != RTxtOutline.Style.TEXT:
-						draw_string_outline(font, baseline - half_size, text[i], HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.size, outline.color)
-					
+						draw_string_outline(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.size, outline.color)
+			
 			for i in _rects.size():
 				var cfx = states[i]
 				var rect := _rects[i]
 				var half_size := rect.size * .5
+				var chr := char(text_server.font_get_char_from_glyph_index(font.get_rids()[0], font_size, cfx.glyph_index))
 				draw_set_transform_matrix(cfx.transform)
 				if style != RTxtOutline.Style.OUTLINE:
-					draw_string(font, baseline - half_size, text[i], HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, cfx.color)
+					draw_string(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, cfx.color)
 				if style != RTxtOutline.Style.TEXT:
-					draw_string_outline(font, baseline - half_size, text[i], HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline_size, cfx.color)
+					draw_string_outline(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline_size, cfx.color)
 		return
 	
 	for i in _rects.size():

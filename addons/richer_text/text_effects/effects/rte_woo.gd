@@ -1,16 +1,13 @@
 @tool
-extends RichTextEffectBase
+class_name RTE_Woo extends RTxtEffect
 
-## Syntax: [woo scale=1.0 freq=8.0][]
+## Syntax: [woo scale=1.0 freq=8.0][/woo]
 var bbcode = "woo"
 
-func _process_custom_fx(c: CharFXTransform):
-	var scale: float = c.env.get("scale", 1.0)
-	var freq: float = c.env.get("freq", 8.0)
-	if rand_anim(c) > 0.5:
-		var ch := get_char(c)
-		if ch == ch.to_lower():
-			set_char(c, ch.to_upper())
-		elif ch == ch.to_upper():
-			set_char(c, ch.to_lower())
+func _update() -> bool:
+	var spd := get_float(&"spd", 2.0)
+	var freq := get_float(&"freq", 2.0)
+	if rnd_smooth(spd, freq) > 0.5:
+		var c := chr
+		chr = c.to_upper() if c == c.to_lower() else c.to_upper()
 	return true
