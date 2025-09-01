@@ -3,13 +3,17 @@ class_name JuicyLabel extends Control
 
 enum EffectState { DEFAULT, HOVERED, CLICKED }
 
-@export var font_db: FontDB:
+@export var font_db: FontDB = FontDB.get_default():
 	set(f):
-		if f == null and FileAccess.file_exists("res://assets/font_db.tres"):
-			f = load("res://assets/font_db.tres")
+		if f == null:
+			f = FontDB.get_default()
 		font_db = f
 
-@export_storage var font_id: String
+@export_storage var font_id: String:
+	set(f):
+		font_id = f
+		font = font_db.get_font(font_id)
+		queue_redraw()
 
 @export var font_size: int = 64:
 	set(s):
@@ -19,24 +23,32 @@ enum EffectState { DEFAULT, HOVERED, CLICKED }
 @export var text := "": set=set_text
 @export var color := Color(.17, .78, .45, 1.0)
 
+@export var outlines: Array[RTxtOutline]
+@export var style := RTxtOutline.Style.TEXT
+@export var outline_size := 1 ## Only used if style is Outline or OutlineAndText.
+
 @export_range(0.0, 1.0, 0.01) var effect_weight := 1.0 ## Scales some effects by this amount.
 @export var effect_state := EffectState.DEFAULT: set=set_effect_state
 @export_storage var _effect_state := EffectState.DEFAULT ## True effect_state.
+
 @export var default_effect: RTxtEffect:
 	set(e):
 		if e == null: e = RTE_Mega.new()
 		if e: e._juicy = self
 		default_effect = e
+
 @export var hovered_effect: RTxtEffect:
 	set(e):
 		if e == null: e = RTE_Mega.new()
 		if e: e._juicy = self
 		hovered_effect = e
+
 @export var clicked_effect: RTxtEffect:
 	set(e):
 		if e == null: e = RTE_Mega.new()
 		if e: e._juicy = self
 		clicked_effect = e
+
 @export var disable_effects := false ## Disables any effects. Debug.
 
 var _anim := 0.0
@@ -45,11 +57,7 @@ var _rects: Array[Rect2]
 var _tween: Tween
 var _tween_amount := 0.0
 var font: Font:
-	get: return font_db.get_font(font_id) if font_db else ThemeDB.fallback_font
-
-@export var outlines: Array[RTxtOutline]
-@export var style := RTxtOutline.Style.OUTLINE
-@export var outline_size := 1 ## Only used if style is Outline or OutlineAndText.
+	get: return font if font else ThemeDB.fallback_font
 
 var horizontal_alignment := HORIZONTAL_ALIGNMENT_CENTER ## TODO
 var vertical_alignment := VERTICAL_ALIGNMENT_CENTER ## TODO.
@@ -106,6 +114,7 @@ func _draw() -> void:
 	#for i in _rects.size():
 		#draw_rect(_rects[i], Color(Color.BLACK, 0.5), false, 1, true)
 	
+	var ascent := Vector2(0.0, font.get_ascent(font_size))
 	var baseline := Vector2(0.0, font.get_ascent(font_size))
 	var diff := (size - custom_minimum_size)
 	
@@ -176,7 +185,7 @@ func _draw() -> void:
 				cfx.elapsed_time = _anim
 				cfx.relative_index = i
 				cfx.range = Vector2(i, 0)
-				cfx.transform = Transform2D(0.0, Vector2.ONE, 0.0, rect.position + half_size)
+				cfx.transform = Transform2D(0.0, Vector2.ONE, 0.0, Vector2.ZERO)
 				cfx.color = color
 				cfx.glyph_index = text_server.font_get_glyph_index(font.get_rids()[0], font_size, text[i].unicode_at(0), 0)
 				var outline_states := outlines.map(func(o: RTxtOutline):
@@ -198,22 +207,30 @@ func _draw() -> void:
 					var outline: Dictionary = cfx.get_meta(&"outline_states")[o]
 					var off: Vector2 = outline.position
 					var chr := char(text_server.font_get_char_from_glyph_index(font.get_rids()[0], font_size, cfx.glyph_index))
-					draw_set_transform_matrix(cfx.transform * Transform2D(outline.rotation, outline.scale, outline.skew, outline.position))
+					var mtx := cfx.transform * Transform2D(outline.rotation, outline.scale, outline.skew, outline.position)
+					var basis_only := Transform2D(cfx.transform.x, cfx.transform.y, Vector2.ZERO)
+					var desired_center := rect.position + Vector2(baseline.x, 0) + half_size
+					var draw_mtx := Transform2D.IDENTITY.translated(desired_center) * basis_only * Transform2D.IDENTITY.translated(-half_size)
+					draw_set_transform_matrix(draw_mtx)
 					if outline.style != RTxtOutline.Style.OUTLINE:
-						draw_string(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.color)
+						draw_string(font, ascent, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.color)
 					if outline.style != RTxtOutline.Style.TEXT:
-						draw_string_outline(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.size, outline.color)
+						draw_string_outline(font, ascent, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline.size, outline.color)
 			
 			for i in _rects.size():
 				var cfx = states[i]
 				var rect := _rects[i]
 				var half_size := rect.size * .5
 				var chr := char(text_server.font_get_char_from_glyph_index(font.get_rids()[0], font_size, cfx.glyph_index))
-				draw_set_transform_matrix(cfx.transform)
+				var mtx: Transform2D = cfx.transform
+				var basis_only := Transform2D(cfx.transform.x, cfx.transform.y, Vector2.ZERO)
+				var desired_center := rect.position + Vector2(baseline.x, 0) + half_size
+				var draw_mtx := Transform2D.IDENTITY.translated(desired_center) * basis_only * Transform2D.IDENTITY.translated(-half_size)
+				draw_set_transform_matrix(draw_mtx)
 				if style != RTxtOutline.Style.OUTLINE:
-					draw_string(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, cfx.color)
+					draw_string(font, ascent, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, cfx.color)
 				if style != RTxtOutline.Style.TEXT:
-					draw_string_outline(font, baseline - half_size, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline_size, cfx.color)
+					draw_string_outline(font, ascent, chr, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, outline_size, cfx.color)
 		return
 	
 	for i in _rects.size():

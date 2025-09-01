@@ -116,13 +116,25 @@ var scale: Vector2:
 
 var rotation: float:
 	get: return transform.get_rotation()
-	set(r): transform *= Transform2D.IDENTITY.rotated(r)
+	set(r): transform = Transform2D(r, transform.origin)
 
 var skew: float:
 	get: return _char_fx.transform.get_skew()
 	set(s):
 		var t := transform
 		transform = Transform2D(t.get_rotation(), t.get_scale(), s, t.get_origin())
+
+var skew_y: float:
+	get:
+		# Extract from basis
+		return atan2(transform.y.x, transform.y.y)
+	set(s):
+		var t := transform
+		var shear := Transform2D(Vector2(1, tan(s)), Vector2(0, 1), Vector2.ZERO)  
+		var new_basis := Transform2D(t.get_rotation(), Vector2.ZERO)
+		new_basis = new_basis.scaled(t.get_scale())
+		new_basis = shear * new_basis
+		transform = Transform2D(new_basis.x, new_basis.y, t.get_origin())
 
 func skew_pivoted(sk: float, pivot: Vector2):
 	var t := transform

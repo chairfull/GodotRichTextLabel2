@@ -30,6 +30,7 @@ func get_nice_names() -> PackedStringArray:
 
 func get_font(id: StringName) -> Font:
 	id = _sanitise(id)
+	#print("SAN ", id)
 	return load(paths[id]) if id in paths else ThemeDB.fallback_font
 
 func find_fonts():
