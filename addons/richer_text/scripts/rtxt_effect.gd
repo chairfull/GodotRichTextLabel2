@@ -210,6 +210,9 @@ func get_float(key: StringName, default := 0.0) -> float:
 func get_bool(key: StringName, default := true) -> bool:
 	return _char_fx.env.get(key, default)
 
+func get_string(key: StringName, default := "") -> String:
+	return _char_fx.env.get(key, default)
+
 func get_instance(key := &"id", default: Object = null) -> Object:
 	if key in _char_fx.env:
 		return instance_from_id(int(_char_fx.env[key]))
