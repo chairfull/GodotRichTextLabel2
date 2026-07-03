@@ -32,23 +32,23 @@ static var REGEX_BOOKMARK := RegEx.create_from_string(r"(?<!#)(?<!\[)#\w*[^_\W](
 
 enum {
 	TRIG_NONE = 1000, # Offset because it's built on the enum of the RicherTextLabel class.
-	TRIG_WAIT,	## [wait] or [w]: Delays animation for a time.
-	TRIG_PACE,	## [pace] or [p]: Changes the animation speed.
-	TRIG_HOLD,	## [hold] or [h]: Hold until player pressed advance.
-	TRIG_SKIP_STARTED,	## [skip] For displaying a chunk of text at once.
-	TRIG_SKIP_FINISHED,	## [] End of skip.
-	TRIG_EXPRESSION,	## [$expression]
-	TRIG_BOOKMARK,		## [#bookmark]
-	TRIG_QUOTE_STARTED,	## Quote has started.
-	TRIG_QUOTE_FINISHED,## Quote has ended.
-	TRIG_STARS_STARTED,		## * started
-	TRIG_STARS_FINISHED,	## * ended
+	TRIG_WAIT, ## [wait] or [w]: Delays animation for a time.
+	TRIG_PACE, ## [pace] or [p]: Changes the animation speed.
+	TRIG_HOLD, ## [hold] or [h]: Hold until player pressed advance.
+	TRIG_SKIP_STARTED, ## [skip] For displaying a chunk of text at once.
+	TRIG_SKIP_FINISHED, ## [] End of skip.
+	TRIG_EXPRESSION, ## [$expression]
+	TRIG_BOOKMARK, ## [#bookmark]
+	TRIG_QUOTE_STARTED, ## Quote has started.
+	TRIG_QUOTE_FINISHED, ## Quote has ended.
+	TRIG_STARS_STARTED, ## * started
+	TRIG_STARS_FINISHED, ## * ended
 }
 
 ## TODO
 enum Style {
-	LETTER,	## Fade per letter.
-	WORD	## Fade per word.
+	LETTER, ## Fade per letter.
+	WORD, ## Fade per word.
 }
 
 ## Animation to play.
@@ -77,7 +77,8 @@ var fade_in_speed := 10.0
 ## This should be very fast so the user isn't bored.
 var fade_out_speed := 120.0
 ## Current state of animation. Manually tweaking is meant for in editor, otherwise you should be calling advance().
-@export_range(0.0, 1.0) var progress := 0.0: set=set_progress
+@export_range(0.0, 1.0) var progress := 0.0:
+	set = set_progress
 ## Current character that is fully visible.
 @export_storage var visible_character := -1
 ## Used internally by animation effects.
@@ -93,7 +94,7 @@ var default_wait_time := 1.0
 @export_storage var _skip := false
 ## Events that will go off once a character is reached.
 ## See the TRIG_ enums above.
-@export_storage var _triggers := {}
+@export_storage var _triggers := { }
 ## Animations will send back their transform state, which may be useful for effects.
 @export_storage var _transforms: Array[Transform2D]
 ## Returns the character width. Used for CTC.
@@ -133,6 +134,7 @@ const FORCED_FINISH_DELAY := 0.1
 @export_storage var _forced_finish := false
 @export_storage var _forced_finish_delay := FORCED_FINISH_DELAY
 
+
 func _set_bbcode():
 	_triggers.clear()
 	_skip = false
@@ -144,12 +146,12 @@ func _set_bbcode():
 	effect_time = 0.0
 	visible_character = -1
 	_showing_ctc = false
-	
+
 	if ctc_node:
 		ctc_node.modulate.a = 0.0
-	
+
 	super()
-	
+
 	var l := get_total_character_count()
 	_alpha.resize(l)
 	_alpha_goal.resize(l)
@@ -159,27 +161,32 @@ func _set_bbcode():
 	_alpha_goal.fill(0.0)
 	_transforms.fill(Transform2D.IDENTITY)
 	_char_size.fill(Vector2.ZERO)
-	
+
 	if play_on_bbcode:
 		_play = true
-	
+
 	_hide_ctc()
+
 
 ## Wait time between 0.0 - 1.0.
 func get_wait_delta() -> float:
 	return 0.0 if _wait_max == 0.0 else 1.0 - (_wait / _wait_max)
 
+
 ## Animation played all the way through.
 func is_anim_finished() -> bool:
 	return progress == 0 if fade_out else progress == 1.0
+
 
 ## Waiting for a timer.
 func is_anim_waiting() -> bool:
 	return _wait > 0.0
 
+
 ## Waiting for user to advance().
 func is_anim_holding() -> bool:
 	return not _play and not is_anim_finished()
+
 
 ## User should call this to advance the animation if it is paused.
 ## Returns true if still playing.
@@ -201,32 +208,35 @@ func advance() -> bool:
 		return true
 	else:
 		# Check if there are more triggers ahead.
-		for i in range(visible_character+1, get_total_character_count()):
+		for i in range(visible_character + 1, get_total_character_count()):
 			if i in _triggers:
 				for trig in _triggers[i]:
 					# Check if there is a trigger that will pause.
 					if trig[0] in [TRIG_WAIT, TRIG_HOLD, TRIG_EXPRESSION]:
 						# Fast forward to next trigger.
-						_jumpto(i+1.)
+						_jumpto(i + 1.)
 						return true
-	
+
 	# Otherwise we will force finished.
 	if not is_anim_finished():
 		_forced_finish = true
 		_forced_finish_delay = FORCED_FINISH_DELAY
 		finish_anim()
 		return true
-	
+
 	if _forced_finish_delay > 0.0:
 		return true
-	
+
 	return false
+
 
 func _jumpto(to: int):
 	progress = float(to) / float(len(_alpha))
 
+
 func _paused():
 	anim_paused.emit()
+
 
 func _continued():
 	_wait = 0.0
@@ -234,6 +244,7 @@ func _continued():
 	_play = true
 	_hide_ctc()
 	anim_continued.emit()
+
 
 func _show_ctc():
 	if ctc_node and not _showing_ctc:
@@ -243,6 +254,7 @@ func _show_ctc():
 		ctc_tween = ctc_node.create_tween()
 		ctc_tween.tween_property(ctc_node, "modulate:a", 1.0, 0.25)
 
+
 func _hide_ctc():
 	if ctc_node and _showing_ctc:
 		_showing_ctc = false
@@ -251,6 +263,7 @@ func _hide_ctc():
 		ctc_tween = ctc_node.create_tween()
 		ctc_tween.tween_property(ctc_node, "modulate:a", 0.0, 0.01)
 
+
 func finish_anim():
 	set_progress(1.0)
 	_triggers.clear()
@@ -258,35 +271,53 @@ func finish_anim():
 	_wait_max = 0.0
 	_alpha.fill(1.0)
 
+
 func _preparse(btext: String) -> String:
 	if signal_quotes:
-		btext = _replace(btext, REGEX_SIGNAL_QUOTES, func(strings):
-			var a = strings[0]
-			return "\"[quote %s]%s[]\"" % [a, unwrap(a, '""')])
-	
+		btext = _replace(
+			btext,
+			REGEX_SIGNAL_QUOTES,
+			func(strings):
+				var a = strings[0]
+				return "\"[quote %s]%s[]\"" % [a, unwrap(a, '""')]
+		)
+
 	if signal_stars:
-		btext = _replace(btext, REGEX_SIGNAL_STARS, func(strings):
-			var a = strings[0]
-			return "[stars %s]*%s*[]" % [unwrap(a, "**"), unwrap(a, "**")])
-	
+		btext = _replace(
+			btext,
+			REGEX_SIGNAL_STARS,
+			func(strings):
+				var a = strings[0]
+				return "[stars %s]*%s*[]" % [unwrap(a, "**"), unwrap(a, "**")]
+		)
+
 	# Converts <code pattern> into [$code pattern].
 	if shortcut_expression:
-		btext = _replace(btext, REGEX_CODE_PATTERN, func(strings):
-			var a = strings[0]
-			if a.begins_with("<<"):
-				return a.replace("<<", "<")
-			return "[$%s]" % unwrap(a, "<>"))
-	
+		btext = _replace(
+			btext,
+			REGEX_CODE_PATTERN,
+			func(strings):
+				var a = strings[0]
+				if a.begins_with("<<"):
+					return a.replace("<<", "<")
+				return "[$%s]" % unwrap(a, "<>")
+		)
+
 	# Converts #bookmark into [#bookmark].
 	if shortcut_bookmark:
-		btext = _replace(btext, REGEX_BOOKMARK, func(strings):
-			return "[%s]" % strings[0])
+		btext = _replace(
+			btext,
+			REGEX_BOOKMARK,
+			func(strings):
+				return "[%s]" % strings[0]
+		)
 		btext = btext.replace("##", "#")
-	
+
 	# Wraps the animation tag.
 	btext = "[%s]%s[]" % [animation, super(btext)]
-	
+
 	return btext
+
 
 func _parse_tag_unused(tag: String, info: String, raw: String) -> bool:
 	if raw.begins_with("$"):
@@ -294,28 +325,36 @@ func _parse_tag_unused(tag: String, info: String, raw: String) -> bool:
 	# The user may want to fire things off, with their own signal.
 	elif raw.begins_with("#"):
 		return _register_trigger(TRIG_BOOKMARK, raw.trim_prefix("#"))
-	
+
 	match tag:
 		"skip":
 			_stack_push(TRIG_SKIP_STARTED, null, true)
 			return _register_trigger(TRIG_SKIP_STARTED, info_to_dict(info))
-		"w", "wait": return _register_trigger(TRIG_WAIT, info_to_dict(info))
-		"h", "hold": return _register_trigger(TRIG_HOLD, info_to_dict(info))
-		"p", "pace": return _register_trigger(TRIG_PACE, info_to_dict(info))
+		"w", "wait":
+			return _register_trigger(TRIG_WAIT, info_to_dict(info))
+		"h", "hold":
+			return _register_trigger(TRIG_HOLD, info_to_dict(info))
+		"p", "pace":
+			return _register_trigger(TRIG_PACE, info_to_dict(info))
 		"quote":
 			_stack_push(TRIG_QUOTE_STARTED, null, true)
 			return _register_trigger(TRIG_QUOTE_STARTED, info)
 		"stars":
 			_stack_push(TRIG_STARS_STARTED, null, true)
 			return _register_trigger(TRIG_STARS_STARTED, info)
-	
+
 	return super(tag, info, raw)
+
 
 func _tag_closed(tag: int, data: Variant):
 	match tag:
-		TRIG_SKIP_STARTED: _register_trigger(TRIG_SKIP_FINISHED)
-		TRIG_QUOTE_STARTED: _register_trigger(TRIG_QUOTE_FINISHED)
-		TRIG_STARS_STARTED: _register_trigger(TRIG_STARS_FINISHED)
+		TRIG_SKIP_STARTED:
+			_register_trigger(TRIG_SKIP_FINISHED)
+		TRIG_QUOTE_STARTED:
+			_register_trigger(TRIG_QUOTE_FINISHED)
+		TRIG_STARS_STARTED:
+			_register_trigger(TRIG_STARS_FINISHED)
+
 
 func _trigger(type: int, data: Variant):
 	match type:
@@ -336,130 +375,141 @@ func _trigger(type: int, data: Variant):
 			hold_started.emit()
 			_paused()
 			_show_ctc()
-		TRIG_PACE: _pace = data.get("pace", data.get("p", 1.0))
-		TRIG_SKIP_STARTED: _skip = true
-		TRIG_SKIP_FINISHED: _skip = false
-		TRIG_QUOTE_STARTED: on_quote_started.emit(data)
-		TRIG_QUOTE_FINISHED: on_quote_finished.emit()
-		TRIG_STARS_STARTED: on_stars_started.emit(data)
-		TRIG_STARS_FINISHED: on_stars_finished.emit()
-		_: push_warning("UNKOWN TRIGGER")
+		TRIG_PACE:
+			_pace = data.get("pace", data.get("p", 1.0))
+		TRIG_SKIP_STARTED:
+			_skip = true
+		TRIG_SKIP_FINISHED:
+			_skip = false
+		TRIG_QUOTE_STARTED:
+			on_quote_started.emit(data)
+		TRIG_QUOTE_FINISHED:
+			on_quote_finished.emit()
+		TRIG_STARS_STARTED:
+			on_stars_started.emit(data)
+		TRIG_STARS_FINISHED:
+			on_stars_finished.emit()
+		_:
+			push_warning("UNKOWN TRIGGER")
+
 
 func _register_trigger(type: int, data = null) -> bool:
-	var at := get_total_character_count()-1
+	var at := get_total_character_count() - 1
 	var tr = [type, data]
-	
+
 	if not at in _triggers:
 		_triggers[at] = [tr]
 	else:
 		_triggers[at].append(tr)
-	
+
 	return true
+
 
 func set_progress(p: float):
 	var last_progress := progress
 	var last_visible_character := visible_character
-	
+
 	var next_progress := clampf(p, 0.0, 1.0)
 	var next_visible_character := int(floor(get_total_character_count() * next_progress))
-	
+
 	if last_progress == next_progress:
 		return
-	
+
 	# Going forward? Emit signal and pop triggers.
 	if last_visible_character < next_visible_character:
 		for i in range(last_visible_character, next_visible_character):
-			
 			if i in _triggers:
 				if not is_anim_waiting():
 					for t in _triggers[i]:
 						_trigger(t[0], t[1])
-				
+
 				# Break at next trigger, unless being forced.
 				if is_anim_waiting() and not _forced_finish:
-					next_progress = (i+1) / float(len(_alpha))
-					next_visible_character = (i+1)
+					next_progress = (i + 1) / float(len(_alpha))
+					next_visible_character = (i + 1)
 					break
-			
+
 			# Breaking on trigger, unless being forced.
 			if is_anim_waiting() and not _forced_finish:
 				break
-	
+
 	progress = next_progress
 	visible_character = next_visible_character
-	
+
 	# Set alpha goal.
 	for i in len(_alpha_goal):
 		_alpha_goal[i] = 1.0 if i <= visible_character else 0.0
-	
+
 	# Emit signals.
 	if last_visible_character < visible_character:
 		if visible_character == 0:
 			anim_started.emit()
-		
+
 		for i in range(last_visible_character, visible_character):
 			on_character.emit(i)
-		
-		if visible_character == get_total_character_count():
+
+		if visible_character == get_total_character_count() and not _hold:
 			anim_finished.emit()
 			_show_ctc()
-	
+
 	if fade_out:
 		if progress == 0.0:
 			finish_anim()
 	else:
 		if progress == 1.0:
 			finish_anim()
-	
+
 	_update_ctc_position()
+
 
 func _update_ctc_position():
 	if not ctc_node:
 		return
-	
-	var index  = visible_character
+
+	var index = visible_character
 	while index > 0 and index < len(_char_size) and _char_size[index] == Vector2.ZERO:
 		index -= 1
-	index = clampi(index, 0, len(_char_size)-1)
-	
+	index = clampi(index, 0, len(_char_size) - 1)
+
 	if _char_size[index] != Vector2.ZERO:
 		ctc_node.position = _transforms[index].origin + _char_size[index] * ctc_offset
+
 
 func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() and _play:
 		effect_time += delta
-	
+
 	if _forced_finish_delay > 0.0:
 		_forced_finish_delay -= delta
-	
+
 	if len(_alpha) != get_total_character_count():
 		return
-	
+
 	if fade_out:
 		for i in len(_alpha):
 			if _alpha[i] > 0.0:
 				_alpha[i] = maxf(0.0, _alpha[i] - delta * fade_in_speed)
-		
+
 		if progress > 0.0:
 			progress -= delta * fade_out_speed
-	
+
 	else:
 		var fs := delta * fade_in_speed
-		
+
 		for i in len(_alpha):
 			if _alpha[i] > _alpha_goal[i]:
 				_alpha[i] = maxf(_alpha_goal[i], _alpha[i] - fs)
-			
+
 			elif _alpha[i] < _alpha_goal[i]:
 				_alpha[i] = minf(_alpha_goal[i], _alpha[i] + fs)
-		
+
 		if _wait > 0.0:
 			_wait -= delta
 			if _wait <= 0.0:
-				_jumpto(visible_character+1) # TODO: Look into why this is needed now?
+				_jumpto(visible_character + 1) # TODO: Look into why this is needed now?
 				wait_finished.emit()
 				_continued()
-		
+
 		elif _play and progress < 1.0 and len(_alpha):
 			if _skip:
 				while _skip:
@@ -468,10 +518,12 @@ func _process(delta: float) -> void:
 				var t := 1.0 / float(len(_alpha))
 				progress += delta * t * play_speed * _pace
 
-func _get_character_alpha(index:int) -> float:
+
+func _get_character_alpha(index: int) -> float:
 	if index < 0 or index >= len(_alpha):
 		return 1.0
 	return _alpha[index]
+
 
 func _get_property_list() -> Array[Dictionary]:
 	var animations: Array[String]
@@ -481,27 +533,27 @@ func _get_property_list() -> Array[Dictionary]:
 			animations.append(file.get_basename().trim_prefix("rte_"))
 	var props: Array[Dictionary]
 	_prop(props, "animation", TYPE_STRING, PROPERTY_HINT_ENUM, ",".join(animations))
-	
+
 	_prop(props, "default_wait_time", TYPE_FLOAT)
-	
+
 	_prop(props, "play_on_bbcode", TYPE_BOOL)
 	_prop(props, "play_speed", TYPE_FLOAT)
 	_prop(props, "fade_out", TYPE_BOOL)
 	_prop(props, "fade_in_speed", TYPE_FLOAT)
 	_prop(props, "fade_out_speed", TYPE_FLOAT)
-	
+
 	_prop_group(props, "Click 2 Continue", "ctc_")
 	_prop_node(props, "ctc_node", "CanvasItem")
 	_prop(props, "ctc_offset", TYPE_VECTOR2)
 	_prop(props, "ctc_on_finished", TYPE_BOOL)
 	_prop(props, "ctc_on_wait", TYPE_BOOL)
-	
+
 	_prop_group(props, "Shortcuts", "shortcut_")
 	_prop(props, "shortcut_expression", TYPE_BOOL)
 	_prop(props, "shortcut_bookmark", TYPE_BOOL)
-	
+
 	_prop_group(props, "Signal", "signal_")
 	_prop(props, "signal_quotes", TYPE_BOOL)
 	_prop(props, "signal_stars", TYPE_BOOL)
-	
+
 	return props
